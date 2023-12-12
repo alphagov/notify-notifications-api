@@ -429,29 +429,14 @@ class TemplateSchema(BaseTemplateSchema, UUIDsAsStringsMixin):
 
 class TemplateSchemaNoDetail(TemplateSchema):
     class Meta(TemplateSchema.Meta):
-        exclude = TemplateSchema.Meta.exclude + (
-            "archived",
-            "created_at",
-            "created_by",
-            "created_by_id",
-            "has_unsubscribe_link",
-            "hidden",
-            "letter_attachment",
-            "postage",
-            "process_type",
-            "redact_personalisation",
-            "reply_to",
-            "reply_to_text",
-            "service",
-            "service_letter_contact",
-            "subject",
-            "template_redacted",
-            "updated_at",
-            "version",
-            "letter_welsh_subject",
-            "letter_welsh_content",
-            "letter_languages",
-        )
+        fields = [
+            "folder",
+            "id",
+            "is_precompiled_letter",
+            "name",
+            "template_type",
+        ]
+        exclude = []
 
 
 class TemplateHistorySchema(BaseSchema):
