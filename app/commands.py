@@ -47,7 +47,6 @@ from app.dao.organisation_dao import (
     dao_get_organisation_by_email_address,
     dao_get_organisation_by_id,
 )
-from app.dao.permissions_dao import permission_dao
 from app.dao.services_dao import (
     dao_create_service,
     dao_fetch_all_services_by_user,
@@ -69,7 +68,6 @@ from app.models import (
     LetterBranding,
     Notification,
     Organisation,
-    Permission,
     Service,
     Template,
     User,
@@ -808,35 +806,6 @@ def functional_test_fixtures():
     else:
         print("Functional test fixtures are disabled. Set REGISTER_FUNCTIONAL_TESTING_BLUEPRINT to True in config.")
         raise SystemExit(1)
-
-
-@click.option("-u", "--user-id", required=True)
-@notify_command(name="local-dev-broadcast-permissions")
-def local_dev_broadcast_permissions(user_id):
-    if os.getenv("NOTIFY_ENVIRONMENT", "") not in ["development", "test"]:
-        current_app.logger.error("Can only be run in development")
-        return
-
-    user = User.query.filter_by(id=user_id).one()
-
-    user_broadcast_services = Service.query.filter(
-        Service.permissions.any(permission="broadcast"), Service.users.any(id=user_id)
-    )
-
-    for service in user_broadcast_services:
-        permission_list = [
-            Permission(service_id=service.id, user_id=user_id, permission=permission)
-            for permission in [
-                "reject_broadcasts",
-                "cancel_broadcasts",  # required to create / approve
-                "create_broadcasts",
-                "approve_broadcasts",  # minimum for testing
-                "manage_templates",  # unlikely but might be useful
-                "view_activity",  # normally added on invite / service creation
-            ]
-        ]
-
-        permission_dao.set_user_service_permission(user, service, permission_list, _commit=True, replace=True)
 
 
 @click.option("-u", "--user-id", required=True)

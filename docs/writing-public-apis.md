@@ -45,6 +45,6 @@ Each adapter should be documented in each client ([example](https://github.com/a
 This is done as part of registering the blueprint in `app/__init__.py` e.g.
 
 ```
-post_broadcast.before_request(requires_auth)
-application.register_blueprint(post_broadcast)
+v2_notification_blueprint.before_request(requires_auth)
+application.register_blueprint(v2_notification_blueprint)
 ```

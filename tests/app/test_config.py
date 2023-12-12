@@ -7,7 +7,7 @@ from app.config import QueueNames
 def test_queue_names_all_queues_correct():
     # Need to ensure that all_queues() only returns queue names used in API
     queues = QueueNames.all_queues()
-    assert len(queues) == 17
+    assert len(queues) == 16
     assert {
         QueueNames.PERIODIC,
         QueueNames.DATABASE,
@@ -25,7 +25,6 @@ def test_queue_names_all_queues_correct():
         QueueNames.LETTERS,
         QueueNames.SES_CALLBACKS,
         QueueNames.SMS_CALLBACKS,
-        QueueNames.BROADCASTS,
     } == set(queues)
 
 

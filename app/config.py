@@ -25,8 +25,6 @@ class QueueNames:
     SMS_CALLBACKS = "sms-callbacks"
     ANTIVIRUS = "antivirus-tasks"
     SANITISE_LETTERS = "sanitise-letter-tasks"
-    BROADCASTS = "broadcast-tasks"
-    GOVUK_ALERTS = "govuk-alerts"
 
     @staticmethod
     def all_queues():
@@ -47,17 +45,7 @@ class QueueNames:
             QueueNames.LETTERS,
             QueueNames.SES_CALLBACKS,
             QueueNames.SMS_CALLBACKS,
-            QueueNames.BROADCASTS,
         ]
-
-
-class BroadcastProvider:
-    EE = "ee"
-    VODAFONE = "vodafone"
-    THREE = "three"
-    O2 = "o2"
-
-    PROVIDERS = [EE, VODAFONE, THREE, O2]
 
 
 class TaskNames:
@@ -66,7 +54,6 @@ class TaskNames:
     SCAN_FILE = "scan-file"
     SANITISE_LETTER = "sanitise-and-upload-letter"
     CREATE_PDF_FOR_TEMPLATED_LETTER = "create-pdf-for-templated-letter"
-    PUBLISH_GOVUK_ALERTS = "publish-govuk-alerts"
     RECREATE_PDF_FOR_PRECOMPILED_LETTER = "recreate-pdf-for-precompiled-letter"
 
 
@@ -159,7 +146,6 @@ class Config:
     NOTIFY_SERVICE_ID = "d6aa2c68-a2d9-4437-ab19-3ae8eb202553"
     NOTIFY_USER_ID = "6af522d0-2915-4e52-83a3-3690455a5fe6"
     INVITATION_EMAIL_TEMPLATE_ID = "4f46df42-f795-4cc4-83bb-65ca312f49cc"
-    BROADCAST_INVITATION_EMAIL_TEMPLATE_ID = "46152f7c-6901-41d5-8590-a5624d0d4359"
     SMS_CODE_TEMPLATE_ID = "36fb0730-6259-4da1-8a80-c8de22ad4246"
     EMAIL_2FA_TEMPLATE_ID = "299726d2-dba6-42b8-8209-30e1d66ea164"
     NEW_USER_EMAIL_VERIFICATION_TEMPLATE_ID = "ece42649-22a8-4d06-b87f-d52d5d3f0a27"
@@ -417,15 +403,6 @@ class Config:
     FIRETEXT_URL = os.environ.get("FIRETEXT_URL", "https://www.firetext.co.uk/api/sendsms/json")
     SES_STUB_URL = os.environ.get("SES_STUB_URL")
 
-    CBC_PROXY_ENABLED = True
-    CBC_PROXY_AWS_ACCESS_KEY_ID = os.environ.get("CBC_PROXY_AWS_ACCESS_KEY_ID", "")
-    CBC_PROXY_AWS_SECRET_ACCESS_KEY = os.environ.get("CBC_PROXY_AWS_SECRET_ACCESS_KEY", "")
-
-    ENABLED_CBCS = {BroadcastProvider.EE, BroadcastProvider.THREE, BroadcastProvider.O2, BroadcastProvider.VODAFONE}
-
-    # as defined in api db migration 0331_add_broadcast_org.py
-    BROADCAST_ORGANISATION_ID = "38e4bf69-93b0-445d-acee-53ea53fe02df"
-
     DVLA_API_BASE_URL = os.environ.get("DVLA_API_BASE_URL", "https://uat.driver-vehicle-licensing.api.gov.uk")
     DVLA_API_TLS_CIPHERS = os.environ.get("DVLA_API_TLS_CIPHERS")
 
@@ -506,8 +483,6 @@ class Development(Config):
     API_RATE_LIMIT_ENABLED = True
     DVLA_EMAIL_ADDRESSES = ["success@simulator.amazonses.com"]
 
-    CBC_PROXY_ENABLED = False
-
     REGISTER_FUNCTIONAL_TESTING_BLUEPRINT = True
 
     FROM_NUMBER = "development"
@@ -548,7 +523,6 @@ class Test(Development):
     MMG_URL = "https://example.com/mmg"
     FIRETEXT_URL = "https://example.com/firetext"
 
-    CBC_PROXY_ENABLED = True
     DVLA_EMAIL_ADDRESSES = ["success@simulator.amazonses.com", "success+2@simulator.amazonses.com"]
 
     DVLA_API_BASE_URL = "https://test-dvla-api.com"

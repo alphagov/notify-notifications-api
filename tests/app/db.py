@@ -2,8 +2,6 @@ import random
 import uuid
 from datetime import date, datetime, timedelta
 
-import pytest
-
 from app import db
 from app.constants import (
     EMAIL_TYPE,
@@ -39,12 +37,6 @@ from app.dao.users_dao import save_model_user
 from app.models import (
     AnnualBilling,
     ApiKey,
-    BroadcastEvent,
-    BroadcastMessage,
-    BroadcastProvider,
-    BroadcastProviderMessage,
-    BroadcastProviderMessageNumber,
-    BroadcastStatusType,
     Complaint,
     DailySortedLetter,
     Domain,
@@ -1161,100 +1153,6 @@ def create_service_contact_list(
     db.session.add(contact_list)
     db.session.commit()
     return contact_list
-
-
-def create_broadcast_message(
-    template=None,
-    *,
-    service=None,  # only used if template is not provided
-    created_by=None,
-    personalisation=None,
-    content=None,
-    status=BroadcastStatusType.DRAFT,
-    starts_at=None,
-    finishes_at=None,
-    areas=None,
-    stubbed=False,
-    cap_event=None,
-):
-    if template:
-        service = template.service
-        template_id = template.id
-        template_version = template.version
-        personalisation = personalisation or {}
-        content = template._as_utils_template_with_personalisation(personalisation).content_with_placeholders_filled_in
-    elif content:
-        template_id = None
-        template_version = None
-        personalisation = None
-        content = content
-    else:
-        pytest.fail("Provide template or content")
-
-    broadcast_message = BroadcastMessage(
-        service_id=service.id,
-        template_id=template_id,
-        template_version=template_version,
-        personalisation=personalisation,
-        status=status,
-        starts_at=starts_at,
-        finishes_at=finishes_at,
-        created_by_id=created_by.id if created_by else service.created_by_id,
-        areas=areas or {"ids": [], "simple_polygons": []},
-        content=content,
-        stubbed=stubbed,
-        cap_event=cap_event,
-    )
-    db.session.add(broadcast_message)
-    db.session.commit()
-    return broadcast_message
-
-
-def create_broadcast_event(
-    broadcast_message,
-    sent_at=None,
-    message_type="alert",
-    transmitted_content=None,
-    transmitted_areas=None,
-    transmitted_sender=None,
-    transmitted_starts_at=None,
-    transmitted_finishes_at=None,
-):
-    b_e = BroadcastEvent(
-        service=broadcast_message.service,
-        broadcast_message=broadcast_message,
-        sent_at=sent_at or datetime.utcnow(),
-        message_type=message_type,
-        transmitted_content=transmitted_content or {"body": "this is an emergency broadcast message"},
-        transmitted_areas=transmitted_areas or broadcast_message.areas,
-        transmitted_sender=transmitted_sender or "www.notifications.service.gov.uk",
-        transmitted_starts_at=transmitted_starts_at,
-        transmitted_finishes_at=transmitted_finishes_at or datetime.utcnow() + timedelta(hours=24),
-    )
-    db.session.add(b_e)
-    db.session.commit()
-    return b_e
-
-
-def create_broadcast_provider_message(broadcast_event, provider, status="sending"):
-    broadcast_provider_message_id = uuid.uuid4()
-    provider_message = BroadcastProviderMessage(
-        id=broadcast_provider_message_id,
-        broadcast_event=broadcast_event,
-        provider=provider,
-        status=status,
-    )
-    db.session.add(provider_message)
-    db.session.commit()
-
-    provider_message_number = None
-    if provider == BroadcastProvider.VODAFONE:
-        provider_message_number = BroadcastProviderMessageNumber(
-            broadcast_provider_message_id=broadcast_provider_message_id
-        )
-        db.session.add(provider_message_number)
-        db.session.commit()
-    return provider_message
 
 
 def create_webauthn_credential(

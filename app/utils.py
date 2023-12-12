@@ -13,7 +13,6 @@ from notifications_utils.url_safe_token import generate_token
 from sqlalchemy import func
 
 from app.constants import (
-    BROADCAST_TYPE,
     EMAIL_TYPE,
     LETTER_TYPE,
     PRECOMPILED_LETTER,
@@ -60,12 +59,9 @@ def url_with_token(data, url, base_url=None):
 
 
 def get_template_instance(template, values):
-    return {
-        SMS_TYPE: SMSMessageTemplate,
-        EMAIL_TYPE: HTMLEmailTemplate,
-        LETTER_TYPE: LetterPrintTemplate,
-        BROADCAST_TYPE: SMSMessageTemplate,
-    }[template["template_type"]](template, values)
+    return {SMS_TYPE: SMSMessageTemplate, EMAIL_TYPE: HTMLEmailTemplate, LETTER_TYPE: LetterPrintTemplate}[
+        template["template_type"]
+    ](template, values)
 
 
 def get_london_midnight_in_utc(date):
@@ -104,8 +100,6 @@ def get_public_notify_type_text(notify_type, plural=False):
         notify_type_text = "document"
     elif notify_type == PRECOMPILED_LETTER:
         notify_type_text = "precompiled letter"
-    elif notify_type == BROADCAST_TYPE:
-        notify_type_text = "broadcast message"
 
     return "{}{}".format(notify_type_text, "s" if plural else "")
 

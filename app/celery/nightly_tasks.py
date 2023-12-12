@@ -343,10 +343,8 @@ def delete_unneeded_notification_history_by_hour():
             # We pass datetimes as args to the next task but celery will actually call `isoformat` on these
             # and send them over as strings
             [start_datetime, end_datetime],
-            # We use the broadcasts queue temporarily as it pulled from by a worker doing no work
-            # We don't want to put the tasks on the periodic queue because they make take up all
-            # the workers capacity, stopping other important tasks from happening
-            queue=QueueNames.BROADCASTS,
+            # We use the reporting queue as it's not used for most of the day
+            queue=QueueNames.REPORTING,
         )
         current_app.logger.info(
             "Created delete_unneeded_notification_history_for_specific_hour task between %s and %s",

@@ -12,7 +12,7 @@ from freezegun import freeze_time
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
 from pypdf.errors import PdfReadError
 
-from app.constants import BROADCAST_TYPE, EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
+from app.constants import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
 from app.dao.templates_dao import (
     dao_get_template_by_id,
     dao_get_template_versions,
@@ -35,7 +35,6 @@ from tests.conftest import set_config_values
 @pytest.mark.parametrize(
     "template_type, subject",
     [
-        (BROADCAST_TYPE, None),
         (SMS_TYPE, None),
         (EMAIL_TYPE, "subject"),
         (LETTER_TYPE, "subject"),
@@ -209,12 +208,6 @@ def test_should_raise_error_if_service_does_not_exist_on_create(client, sample_u
 @pytest.mark.parametrize(
     "permissions, template_type, subject, expected_error",
     [
-        (
-            [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE],
-            BROADCAST_TYPE,
-            None,
-            {"template_type": ["Creating broadcast message templates is not allowed"]},
-        ),  # noqa
         ([EMAIL_TYPE], SMS_TYPE, None, {"template_type": ["Creating text message templates is not allowed"]}),
         ([SMS_TYPE], EMAIL_TYPE, "subject", {"template_type": ["Creating email templates is not allowed"]}),
         ([SMS_TYPE], LETTER_TYPE, "subject", {"template_type": ["Creating letter templates is not allowed"]}),
@@ -592,7 +585,6 @@ def test_should_get_return_all_fields_by_default(
     )
     assert json_response["data"][0].keys() == {
         "archived",
-        "broadcast_data",
         "content",
         "created_at",
         "created_by",
@@ -634,7 +626,6 @@ def test_should_get_return_all_fields_by_default(
         (EMAIL_TYPE, None),
         (SMS_TYPE, None),
         (LETTER_TYPE, None),
-        (BROADCAST_TYPE, "This is a test"),
     ),
 )
 def test_should_not_return_content_and_subject_if_requested(
@@ -783,25 +774,16 @@ def test_should_return_404_if_no_templates_for_service_with_id(client, sample_se
     assert json_resp["result"] == "error"
     assert json_resp["message"] == "No result found"
 
-
-@pytest.mark.parametrize(
-    "template_type",
-    (
-        SMS_TYPE,
-        BROADCAST_TYPE,
-    ),
-)
 def test_create_400_for_over_limit_content(
     client,
     notify_api,
-    sample_user,
-    template_type,
+     sample_user
 ):
-    sample_service = create_service(service_permissions=[template_type])
+    sample_service = create_service(service_permissions=[SMS_TYPE])
     content = "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(SMS_CHAR_COUNT_LIMIT + 1))
     data = {
         "name": "too big template",
-        "template_type": template_type,
+        "template_type": SMS_TYPE,
         "content": content,
         "service": str(sample_service.id),
         "created_by": str(sample_service.created_by.id),

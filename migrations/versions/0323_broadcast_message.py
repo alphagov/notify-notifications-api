@@ -11,8 +11,6 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.sql import column, func
 
-from app.models import BroadcastMessage
-
 revision = "0323_broadcast_message"
 down_revision = "0322_broadcast_service_perm"
 
