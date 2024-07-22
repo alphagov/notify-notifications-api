@@ -21,7 +21,6 @@ from app.constants import (
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
     LETTER_TYPE,
-    PHONE_NUMBER_VALIDATION_ERROR_MAP,
     SMS_TYPE,
 )
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
@@ -277,7 +276,3 @@ def check_template_can_contain_documents(template_type, personalisation):
         isinstance(v, dict) and "file" in v for v in (personalisation or {}).values()
     ):
         raise BadRequestError(message="Can only send a file by email")
-
-
-def remap_phone_number_validation_messages(error_message):
-    return PHONE_NUMBER_VALIDATION_ERROR_MAP.get(error_message, error_message)

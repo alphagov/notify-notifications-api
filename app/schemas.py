@@ -25,7 +25,6 @@ import app.constants
 from app import db, ma, models
 from app.dao.permissions_dao import permission_dao
 from app.models import ServicePermission
-from app.notifications.validators import remap_phone_number_validation_messages
 from app.utils import DATETIME_FORMAT_NO_TIMEZONE, get_template_instance
 
 
@@ -134,8 +133,7 @@ class UserSchema(BaseSchema):
             if value is not None:
                 validate_phone_number(value, international=True)
         except InvalidPhoneError as error:
-            error_message = remap_phone_number_validation_messages(str(error))
-            raise ValidationError(f"Invalid phone number: {error_message}") from error
+            raise ValidationError(f"Invalid phone number: {error.get_legacy_v2_api_error_message()}") from error
 
 
 class UserUpdateAttributeSchema(BaseSchema):
@@ -175,8 +173,7 @@ class UserUpdateAttributeSchema(BaseSchema):
             if value is not None:
                 validate_phone_number(value, international=True)
         except InvalidPhoneError as error:
-            error_message = remap_phone_number_validation_messages(str(error))
-            raise ValidationError(f"Invalid phone number: {error_message}") from error
+            raise ValidationError(f"Invalid phone number: {error.get_legacy_v2_api_error_message()}") from error
 
     @validates_schema(pass_original=True)
     def check_unknown_fields(self, data, original_data, **kwargs):
@@ -578,8 +575,7 @@ class SmsNotificationSchema(NotificationSchema):
         try:
             validate_phone_number(value, international=True)
         except InvalidPhoneError as error:
-            error_message = remap_phone_number_validation_messages(str(error))
-            raise ValidationError(f"Invalid phone number: {error_message}") from error
+            raise ValidationError(f"Invalid phone number: {error.get_legacy_v2_api_error_message()}") from error
 
     @post_load
     def format_phone_number(self, item, **kwargs):

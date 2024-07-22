@@ -7,9 +7,7 @@ from iso8601 import ParseError, iso8601
 from jsonschema import Draft7Validator, FormatChecker, ValidationError
 from notifications_utils.recipient_validation.email_address import validate_email_address
 from notifications_utils.recipient_validation.errors import InvalidEmailError, InvalidPhoneError
-from notifications_utils.recipient_validation.phone_number import validate_phone_number
-
-from app.notifications.validators import remap_phone_number_validation_messages
+from notifications_utils.recipient_validation.phone_number import PhoneNumber
 
 format_checker = FormatChecker()
 
@@ -21,13 +19,15 @@ def validate_uuid(instance):
     return True
 
 
-@format_checker.checks("phone_number", raises=InvalidPhoneError)
+@format_checker.checks("phone_number", raises=ValidationError)
 def validate_schema_phone_number(instance):
+
     if isinstance(instance, str):
         try:
-            validate_phone_number(instance, international=True)
-        except InvalidPhoneError as error:
-            raise InvalidPhoneError(remap_phone_number_validation_messages(str(error))) from error
+            PhoneNumber(instance, allow_international=True)
+        except InvalidPhoneError as e:
+            legacy_message = e.get_legacy_v2_api_error_message()
+            raise ValidationError(legacy_message) from None
     return True
 
 

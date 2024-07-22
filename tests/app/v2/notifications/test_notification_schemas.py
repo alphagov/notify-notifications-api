@@ -120,6 +120,11 @@ def test_post_sms_schema_is_valid(input):
     assert validate(input, post_sms_request_schema) == input
 
 
+def test_post_sms_schema_is_valid_for_landline_if_service_can_send_to_landlines():
+    sms_data = {"phone_number": "0117 496 0860", "template_id": str(uuid.uuid4())}
+    assert validate(sms_data, post_sms_request_schema) == sms_data
+
+
 @pytest.mark.parametrize(
     "template_id",
     [
@@ -175,7 +180,7 @@ def test_post_sms_schema_with_personalisation_that_is_not_a_dict():
 @pytest.mark.parametrize(
     "invalid_phone_number, err_msg",
     [
-        ("08515111111", "phone_number Not a UK mobile number"),
+        ("08515111111", "phone_number Number is not valid – double check the phone number you entered"),
         ("07515111*11", "phone_number Must not contain letters or symbols"),
         ("notaphoneumber", "phone_number Must not contain letters or symbols"),
         (7700900001, "phone_number 7700900001 is not of type string"),
@@ -201,7 +206,7 @@ def test_post_sms_request_schema_invalid_phone_number_and_missing_template():
         validate(j, post_sms_request_schema)
     errors = json.loads(str(e.value)).get("errors")
     assert len(errors) == 2
-    assert {"error": "ValidationError", "message": "phone_number Not a UK mobile number"} in errors
+    assert {"error": "ValidationError", "message": "phone_number Number is not valid – double check the phone number you entered"} in errors
     assert {"error": "ValidationError", "message": "template_id is a required property"} in errors
 
 

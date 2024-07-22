@@ -840,7 +840,7 @@ def test_post_sms_notification_returns_400_if_number_not_in_guest_list(
     template = create_template(service=service)
 
     data = {
-        "phone_number": "+327700900855",
+        "phone_number": "+3225484211",
         "template_id": template.id,
     }
 

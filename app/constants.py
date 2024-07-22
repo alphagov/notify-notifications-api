@@ -330,16 +330,3 @@ class CacheKeys:
 
 # Admin API error codes
 QR_CODE_TOO_LONG = "qr-code-too-long"
-
-
-# We updated the content for phone number validation messages in https://github.com/alphagov/notifications-utils/pull/1054,
-# but these are returned from our API. We don't want to make any breaking changes, so we will map them back to our
-# original errors.
-# We can decide as/when we want to remove this and update the messages to end users.
-PHONE_NUMBER_VALIDATION_ERROR_MAP = {
-    "Mobile numbers can only include: 0 1 2 3 4 5 6 7 8 9 ( ) + -": "Must not contain letters or symbols",
-    "Mobile number is too long": "Too many digits",
-    "Mobile number is too short": "Not enough digits",
-    "Country code not found - double check the mobile number you entered": "Not a valid country prefix",
-    "This does not look like a UK mobile number – double check the mobile number you entered": "Not a UK mobile number",
-}
