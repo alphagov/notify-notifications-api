@@ -452,6 +452,41 @@ def test_persist_notification_without_send_to_landline_raises_invalidphoneerror(
         )
 
 
+@pytest.mark.parametrize(
+    "recipient",
+    [
+        "0845 46 46",  # short premium
+        "0900 123 4567",  # premium
+    ],
+)
+def test_persist_notification_with_send_to_landline_to_premium_number_raises_invallidphoneerror(
+    sample_job,
+    sample_api_key,
+    mocker,
+    recipient,
+):
+    sample_job.service.permissions = [
+        # and any other permissions we need
+        ServicePermission(service_id=sample_job.service.id, permission=SMS_TYPE),
+        ServicePermission(service_id=sample_job.service.id, permission=SMS_TO_UK_LANDLINES),
+    ]
+    with pytest.raises(InvalidPhoneError) as exc:
+        persist_notification(
+            template_id=sample_job.template.id,
+            template_version=sample_job.template.version,
+            recipient=recipient,
+            service=sample_job.service,
+            personalisation=None,
+            notification_type="sms",
+            api_key_id=sample_api_key.id,
+            key_type=sample_api_key.key_type,
+            job_id=sample_job.id,
+            job_row_number=10,
+            client_reference="ref from client",
+        )
+    assert exc.value.code == InvalidPhoneError.Codes.INVALID_NUMBER
+
+
 def test_persist_notification_with_international_info_does_not_store_for_email(sample_job, sample_api_key, mocker):
 
     persist_notification(
