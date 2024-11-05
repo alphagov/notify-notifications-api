@@ -14,7 +14,7 @@ from pypdf.errors import PdfReadError
 from requests import post as requests_post
 from sqlalchemy.orm.exc import NoResultFound
 
-from app.constants import BROADCAST_TYPE, LETTER_TYPE, QR_CODE_TOO_LONG, SECOND_CLASS, SMS_TYPE
+from app.constants import LETTER_TYPE, QR_CODE_TOO_LONG, SECOND_CLASS, SMS_TYPE
 from app.dao.notifications_dao import get_notification_by_id
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.template_folder_dao import (
@@ -52,7 +52,7 @@ register_errors(template_blueprint)
 
 
 def _content_count_greater_than_limit(content, template_type):
-    if template_type in {SMS_TYPE, BROADCAST_TYPE}:
+    if template_type == SMS_TYPE:
         template = SMSMessageTemplate({"content": content, "template_type": SMS_TYPE})
         return template.is_message_too_long()
     return False

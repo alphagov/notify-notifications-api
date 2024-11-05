@@ -3,7 +3,7 @@ from itsdangerous import BadData, SignatureExpired
 from notifications_utils.url_safe_token import check_token, generate_token
 
 from app.config import QueueNames
-from app.constants import BROADCAST_TYPE, EMAIL_TYPE, KEY_TYPE_NORMAL
+from app.constants import EMAIL_TYPE, KEY_TYPE_NORMAL
 from app.dao.invited_user_dao import (
     get_invited_user_by_id,
     get_invited_user_by_service_and_id,
@@ -34,10 +34,7 @@ def create_invited_user(service_id):
     invited_user = invited_user_schema.load(request_json)
     save_invited_user(invited_user)
 
-    if invited_user.service.has_permission(BROADCAST_TYPE):
-        template_id = current_app.config["BROADCAST_INVITATION_EMAIL_TEMPLATE_ID"]
-    else:
-        template_id = current_app.config["INVITATION_EMAIL_TEMPLATE_ID"]
+    template_id = current_app.config["INVITATION_EMAIL_TEMPLATE_ID"]
 
     template = dao_get_template_by_id(template_id)
     service = Service.query.get(current_app.config["NOTIFY_SERVICE_ID"])

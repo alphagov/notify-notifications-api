@@ -34,7 +34,6 @@ from werkzeug.exceptions import HTTPException as WerkzeugHTTPException
 from werkzeug.local import LocalProxy
 
 from app.clients import NotificationProviderClients
-from app.clients.cbc_proxy import CBCProxyClient
 from app.clients.document_download import DocumentDownloadClient
 from app.clients.email.aws_ses import AwsSesClient
 from app.clients.email.aws_ses_stub import AwsSesStubClient
@@ -49,7 +48,6 @@ notify_celery = NotifyCelery()
 signing = Signing()
 statsd_client = StatsdClient()
 redis_store = RedisClient()
-cbc_proxy_client = CBCProxyClient()
 metrics = GDSMetrics()
 
 api_user = LocalProxy(lambda: g.api_user)
@@ -181,8 +179,6 @@ def create_app(application):
     notify_celery.init_app(application)
     signing.init_app(application)
     redis_store.init_app(application)
-
-    cbc_proxy_client.init_app(application)
 
     register_blueprint(application)
     register_v2_blueprints(application)

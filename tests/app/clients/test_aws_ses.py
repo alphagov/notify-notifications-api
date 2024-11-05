@@ -190,7 +190,7 @@ def test_send_email_does_not_raise_AwsSesClientThrottlingSendRateException_if_no
         )
 
 
-def test_send_email_raises_other_errs_as_AwsSesClientException(mocker):
+def test_send_email_raises_other_errs_as_AwsSesClientException(mocker, notify_api):
     boto_mock = mocker.patch.object(aws_ses_client, "_client", create=True)
     mocker.patch.object(aws_ses_client, "statsd_client", create=True)
     error_response = {

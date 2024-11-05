@@ -50,9 +50,6 @@ case "$1" in
     # Only consume the notify-internal-tasks queue on this app so that Notify messages are processed as a priority
     exec $COMMON_CMD notify-internal-tasks
     ;;
-  api-worker-broadcasts)
-    exec $COMMON_CMD broadcast-tasks
-    ;;
   api-worker-receipts)
     exec $COMMON_CMD ses-callbacks,sms-callbacks
     ;;

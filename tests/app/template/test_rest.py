@@ -12,7 +12,7 @@ from freezegun import freeze_time
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
 from pypdf.errors import PdfReadError
 
-from app.constants import BROADCAST_TYPE, EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
+from app.constants import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
 from app.dao.templates_dao import (
     dao_get_template_by_id,
     dao_get_template_versions,
@@ -35,7 +35,6 @@ from tests.conftest import set_config_values
 @pytest.mark.parametrize(
     "template_type, subject",
     [
-        (BROADCAST_TYPE, None),
         (SMS_TYPE, None),
         (EMAIL_TYPE, "subject"),
         (LETTER_TYPE, "subject"),
@@ -209,12 +208,6 @@ def test_should_raise_error_if_service_does_not_exist_on_create(client, sample_u
 @pytest.mark.parametrize(
     "permissions, template_type, subject, expected_error",
     [
-        (
-            [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE],
-            BROADCAST_TYPE,
-            None,
-            {"template_type": ["Creating broadcast message templates is not allowed"]},
-        ),  # noqa
         ([EMAIL_TYPE], SMS_TYPE, None, {"template_type": ["Creating text message templates is not allowed"]}),
         ([SMS_TYPE], EMAIL_TYPE, "subject", {"template_type": ["Creating email templates is not allowed"]}),
         ([SMS_TYPE], LETTER_TYPE, "subject", {"template_type": ["Creating letter templates is not allowed"]}),
@@ -592,7 +585,6 @@ def test_should_get_return_all_fields_by_default(
     )
     assert json_response["data"][0].keys() == {
         "archived",
-        "broadcast_data",
         "content",
         "created_at",
         "created_by",
@@ -621,46 +613,21 @@ def test_should_get_return_all_fields_by_default(
     }
 
 
-@pytest.mark.parametrize(
-    "extra_args",
-    (
-        {"detailed": False},
-        {"detailed": "False"},
-    ),
-)
-@pytest.mark.parametrize(
-    "template_type, expected_content",
-    (
-        (EMAIL_TYPE, None),
-        (SMS_TYPE, None),
-        (LETTER_TYPE, None),
-        (BROADCAST_TYPE, "This is a test"),
-    ),
-)
-def test_should_not_return_content_and_subject_if_requested(
-    admin_request,
-    sample_service,
-    extra_args,
-    template_type,
-    expected_content,
-):
-    create_template(
-        sample_service,
-        template_type=template_type,
-        content="This is a test",
-    )
+@pytest.mark.parametrize("template_type", (EMAIL_TYPE, SMS_TYPE, LETTER_TYPE))
+def test_should_not_return_content_and_subject_if_requested(admin_request, sample_service, template_type):
+    create_template(sample_service, template_type=template_type)
     json_response = admin_request.get(
-        "template.get_all_templates_for_service", service_id=sample_service.id, **extra_args
+        "template.get_all_templates_for_service",
+        service_id=sample_service.id,
+        detailed=False,
     )
     assert json_response["data"][0].keys() == {
-        "content",
         "folder",
         "id",
         "is_precompiled_letter",
         "name",
         "template_type",
     }
-    assert json_response["data"][0]["content"] == expected_content
 
 
 @pytest.mark.parametrize(
@@ -784,24 +751,12 @@ def test_should_return_404_if_no_templates_for_service_with_id(client, sample_se
     assert json_resp["message"] == "No result found"
 
 
-@pytest.mark.parametrize(
-    "template_type",
-    (
-        SMS_TYPE,
-        BROADCAST_TYPE,
-    ),
-)
-def test_create_400_for_over_limit_content(
-    client,
-    notify_api,
-    sample_user,
-    template_type,
-):
-    sample_service = create_service(service_permissions=[template_type])
+def test_create_400_for_over_limit_content(client, notify_api, sample_user):
+    sample_service = create_service(service_permissions=[SMS_TYPE])
     content = "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(SMS_CHAR_COUNT_LIMIT + 1))
     data = {
         "name": "too big template",
-        "template_type": template_type,
+        "template_type": SMS_TYPE,
         "content": content,
         "service": str(sample_service.id),
         "created_by": str(sample_service.created_by.id),
