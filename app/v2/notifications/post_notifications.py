@@ -17,7 +17,7 @@ from app.celery.letters_pdf_tasks import (
     get_pdf_for_templated_letter,
     sanitise_letter,
 )
-from app.celery.research_mode_tasks import create_fake_letter_response_file
+from app.celery.research_mode_tasks import create_fake_letter_callback
 from app.clients.document_download import DocumentDownloadError
 from app.config import QueueNames, TaskNames
 from app.constants import (
@@ -331,7 +331,10 @@ def process_letter_notification(
     get_pdf_for_templated_letter.apply_async([str(notification.id)], queue=queue)
 
     if test_key and not current_app.config["SEND_LETTERS_ENABLED"]:
-        create_fake_letter_response_file.apply_async((notification.reference,), queue=queue)
+        create_fake_letter_callback.apply_async(
+            [notification.id, notification.billable_units, notification.postage],
+            queue=queue,
+        )
 
     resp = create_response_for_post_notification(
         notification_id=notification.id,

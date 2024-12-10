@@ -4,11 +4,14 @@ from unittest.mock import ANY, call
 import pytest
 import requests
 import requests_mock
+from celery.exceptions import MaxRetriesExceededError
 from flask import current_app, json
 from freezegun import freeze_time
 
+from app import signing
 from app.celery.process_ses_receipts_tasks import process_ses_results
 from app.celery.research_mode_tasks import (
+    create_fake_letter_callback,
     create_fake_letter_response_file,
     firetext_callback,
     mmg_callback,
@@ -196,3 +199,84 @@ def test_create_fake_letter_response_file_gives_up_after_thirty_times(notify_api
 
     assert len(mock_file_exists.mock_calls) == 30
     assert not mock_s3upload.called
+
+
+@freeze_time("2024-07-26 16:30:53.321")
+@pytest.mark.parametrize(
+    "billable_units, postage, response_postage, response_mailing_product",
+    [
+        ("1", "first", "1ST", "UNCODED"),
+        ("3", "second", "2ND", "MM"),
+        ("5", "europe", "INTERNATIONAL", "INT EU"),
+        ("2", "rest-of-world", "INTERNATIONAL", "INT ROW"),
+    ],
+)
+def test_create_fake_letter_callback_sends_letter_response(
+    notify_api,
+    sample_letter_notification,
+    billable_units,
+    postage,
+    response_postage,
+    response_mailing_product,
+    rmock,
+):
+    sample_letter_notification.billable_units = billable_units
+    sample_letter_notification.postage = postage
+    rmock.post(
+        f"http://localhost:6011/notifications/letter/status?token={signing.encode(str(sample_letter_notification.id))}",
+    )
+
+    create_fake_letter_callback(
+        sample_letter_notification.id,
+        sample_letter_notification.billable_units,
+        sample_letter_notification.postage,
+    )
+
+    assert rmock.last_request.headers["Content-Type"] == "application/json"
+    assert rmock.last_request.json() == {
+        "id": "1234",
+        "source": "dvla:resource:osl:print:print-hub-fulfilment:5.18.0",
+        "specVersion": "1",
+        "type": "uk.gov.dvla.osl.osldatadictionaryschemas.print.messages.v2.PrintJobStatus",
+        "time": "2024-04-01T00:00:00Z",
+        "dataContentType": "application/json",
+        "dataSchema": "https://osl-data-dictionary-schemas.engineering.dvla.gov.uk/print/messages/v2/print-job-status.json",
+        "data": {
+            "despatchProperties": [
+                {"key": "totalSheets", "value": billable_units},
+                {"key": "postageClass", "value": response_postage},
+                {"key": "mailingProduct", "value": response_mailing_product},
+                {"key": "productionRunDate", "value": "2024-07-26 16:30:53.321000"},
+            ],
+            "jobId": str(sample_letter_notification.id),
+            "jobType": "NOTIFY",
+            "jobStatus": "DESPATCHED",
+            "templateReference": "NOTIFY",
+        },
+        "metadata": {
+            "handler": {"urn": "dvla:resource:osl:print:print-hub-fulfilment:5.18.0"},
+            "origin": {"urn": "dvla:resource:osg:dev:printhub:1.0.1"},
+            "correlationId": "b5d9b2bd-6e8f-4275-bdd3-c8086fe09c52",
+        },
+    }
+
+
+def test_create_fake_letter_callback_retries(notify_api, fake_uuid, mocker):
+    mocker.patch("app.celery.research_mode_tasks.send_letter_response", side_effect=Exception())
+    mock_retry = mocker.patch("app.celery.research_mode_tasks.create_fake_letter_callback.retry")
+
+    create_fake_letter_callback(uuid.UUID(fake_uuid), 2, "second")
+
+    assert mock_retry.called
+
+
+def test_create_fake_letter_callback_logs_if_max_retries_exceeded(notify_api, fake_uuid, caplog, mocker):
+    mocker.patch("app.celery.research_mode_tasks.send_letter_response", side_effect=Exception())
+    mocker.patch(
+        "app.celery.research_mode_tasks.create_fake_letter_callback.retry", side_effect=MaxRetriesExceededError()
+    )
+
+    with caplog.at_level("WARN"):
+        create_fake_letter_callback(uuid.UUID(fake_uuid), 2, "second")
+
+    assert f"Fake letter callback cound not be created for {fake_uuid}" in caplog.messages

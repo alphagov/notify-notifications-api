@@ -4,6 +4,8 @@ from unittest.mock import ANY
 import pytest
 from flask import json
 
+from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
+from app.celery.research_mode_tasks import create_fake_letter_callback
 from app.config import QueueNames
 from app.constants import (
     EMAIL_TYPE,
@@ -238,7 +240,7 @@ def test_post_letter_notification_throws_error_for_bad_address(
 
 
 def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_delivered(
-    notify_api, api_client_request, sample_letter_template, mocker
+    notify_api, api_client_request, sample_letter_template, mock_celery_task
 ):
     data = {
         "template_id": str(sample_letter_template.id),
@@ -252,10 +254,8 @@ def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_d
         "reference": "foo",
     }
 
-    fake_create_letter_task = mocker.patch("app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
-    fake_create_dvla_response_task = mocker.patch(
-        "app.celery.research_mode_tasks.create_fake_letter_response_file.apply_async"
-    )
+    fake_create_letter_task = mock_celery_task(get_pdf_for_templated_letter)
+    fake_create_dvla_response_task = mock_celery_task(create_fake_letter_callback)
 
     with set_config_values(notify_api, {"SEND_LETTERS_ENABLED": True}):
         api_client_request.post(
@@ -275,7 +275,7 @@ def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_d
 
 
 def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_sending_and_sends_fake_response_file(
-    notify_api, api_client_request, sample_letter_template, mocker
+    notify_api, api_client_request, sample_letter_template, mock_celery_task
 ):
     data = {
         "template_id": str(sample_letter_template.id),
@@ -289,10 +289,8 @@ def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_s
         "reference": "foo",
     }
 
-    fake_create_letter_task = mocker.patch("app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
-    fake_create_dvla_response_task = mocker.patch(
-        "app.celery.research_mode_tasks.create_fake_letter_response_file.apply_async"
-    )
+    fake_create_letter_task = mock_celery_task(get_pdf_for_templated_letter)
+    fake_create_dvla_response_task = mock_celery_task(create_fake_letter_callback)
     with set_config_values(notify_api, {"SEND_LETTERS_ENABLED": False}):
         api_client_request.post(
             sample_letter_template.service_id,
