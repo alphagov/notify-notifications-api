@@ -2,13 +2,14 @@ import uuid
 from datetime import datetime, timedelta
 
 from flask import current_app
+from notifications_utils.clients.redis import RequestCache
 from notifications_utils.letter_timings import (
     CANCELLABLE_JOB_LETTER_STATUSES,
     letter_can_be_cancelled,
 )
 from sqlalchemy import and_, asc, desc, func
 
-from app import db
+from app import db, redis_store
 from app.constants import (
     JOB_STATUS_CANCELLED,
     JOB_STATUS_FINISHED,
@@ -17,8 +18,10 @@ from app.constants import (
     LETTER_TYPE,
     NOTIFICATION_CANCELLED,
     NOTIFICATION_CREATED,
+    NOTIFICATION_STATUS_TYPES_COMPLETED,
 )
 from app.dao.dao_utils import autocommit
+from app.dao.fact_notification_status_dao import fetch_notification_statuses_for_job
 from app.dao.templates_dao import dao_get_template_by_id
 from app.models import (
     FactNotificationStatus,
@@ -258,3 +261,30 @@ def find_missing_row_for_job(job_id, job_size):
         .filter(Notification.job_row_number == None)  # noqa
     )
     return query.all()
+
+
+redis_cache = RequestCache(redis_store)
+
+
+@redis_cache.set("job-{job_id}-notification-outcomes", ttl_in_seconds=timedelta(days=1).total_seconds())
+def get_possibly_cached_notification_outcomes_for_job(
+    job_id: uuid.UUID | str, notification_count: int | None, processing_started: datetime | None
+):
+    if processing_started is None:
+        statuses = []
+    elif processing_started.replace(tzinfo=None) < midnight_n_days_ago(3):
+        # ft_notification_status table
+        statuses = fetch_notification_statuses_for_job(job_id)
+    else:
+        # notifications table
+        statuses = dao_get_notification_outcomes_for_job(job_id)
+
+    return RequestCache.CacheResultWrapper(
+        value=[{"status": status.status, "count": status.count} for status in statuses],
+        # cache if all rows of the job are accounted for and no
+        # notifications are in a state still likely to change
+        cache_decision=bool(
+            sum(status.count for status in statuses) == notification_count
+            and all(status.status in NOTIFICATION_STATUS_TYPES_COMPLETED for status in statuses)
+        ),
+    )

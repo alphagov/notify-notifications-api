@@ -700,8 +700,13 @@ def test_get_job_by_id_with_stats_for_old_job_where_notifications_have_been_purg
 
 
 @freeze_time("2017-07-17 07:17")
-def test_get_jobs(admin_request, sample_template):
+def test_get_jobs(admin_request, sample_template, mocker):
     _setup_jobs(sample_template)
+
+    mock_redis_get = mocker.patch(
+        "app.redis_store.get",
+        return_value=None,
+    )
 
     service_id = sample_template.service.id
 
@@ -731,27 +736,39 @@ def test_get_jobs(admin_request, sample_template):
         "updated_at": None,
         "contact_list_id": None,
     }
+    assert len(mock_redis_get.mock_calls) == 5
 
 
-def test_get_jobs_with_limit_days(admin_request, sample_template):
+def test_get_jobs_with_limit_days(admin_request, sample_template, mocker):
+    jobs = []
     for time in [
         "Sunday 1st July 2018 22:59",
         "Sunday 2nd July 2018 23:00",  # beginning of monday morning
         "Monday 3rd July 2018 12:00",
     ]:
         with freeze_time(time):
-            create_job(template=sample_template)
+            jobs.append(create_job(template=sample_template))
+
+    mock_redis_get = mocker.patch("app.redis_store.get", return_value=None)
+    mocker.patch("app.redis_store.set", side_effect=AssertionError("Set call not expected"))
 
     with freeze_time("Monday 9th July 2018 12:00"):
         resp_json = admin_request.get("job.get_jobs_by_service", service_id=sample_template.service_id, limit_days=7)
 
     assert len(resp_json["data"]) == 2
+    assert mock_redis_get.mock_calls == [
+        mocker.call(f"job-{jobs[2].id}-notification-outcomes"),
+        mocker.call(f"job-{jobs[1].id}-notification-outcomes"),
+    ]
 
 
-def test_get_jobs_by_contact_list(admin_request, sample_template):
+def test_get_jobs_by_contact_list(admin_request, sample_template, mocker):
     contact_list = create_service_contact_list()
-    create_job(template=sample_template)
-    create_job(template=sample_template, contact_list_id=contact_list.id)
+    job_1 = create_job(template=sample_template)  # noqa
+    job_2 = create_job(template=sample_template, contact_list_id=contact_list.id)
+
+    mock_redis_get = mocker.patch("app.redis_store.get", return_value=None)
+    mocker.patch("app.redis_store.set", side_effect=AssertionError("Set call not expected"))
 
     resp_json = admin_request.get(
         "job.get_jobs_by_service",
@@ -760,9 +777,12 @@ def test_get_jobs_by_contact_list(admin_request, sample_template):
     )
 
     assert len(resp_json["data"]) == 1
+    assert mock_redis_get.mock_calls == [
+        mocker.call(f"job-{job_2.id}-notification-outcomes"),
+    ]
 
 
-def test_get_jobs_should_return_statistics(admin_request, sample_template):
+def test_get_jobs_should_return_statistics(admin_request, sample_template, mocker):
     now = datetime.utcnow()
     earlier = datetime.utcnow() - timedelta(days=1)
     job_1 = create_job(sample_template, processing_started=earlier)
@@ -774,6 +794,9 @@ def test_get_jobs_should_return_statistics(admin_request, sample_template):
     create_notification(job=job_2, status="sending")
     create_notification(job=job_2, status="sending")
 
+    mock_redis_get = mocker.patch("app.redis_store.get", return_value=None)
+    mocker.patch("app.redis_store.set", side_effect=AssertionError("Set call not expected"))
+
     resp_json = admin_request.get("job.get_jobs_by_service", service_id=sample_template.service_id)
 
     assert len(resp_json["data"]) == 2
@@ -781,13 +804,20 @@ def test_get_jobs_should_return_statistics(admin_request, sample_template):
     assert {"status": "sending", "count": 3} in resp_json["data"][0]["statistics"]
     assert resp_json["data"][1]["id"] == str(job_1.id)
     assert {"status": "created", "count": 3} in resp_json["data"][1]["statistics"]
+    assert mock_redis_get.mock_calls == [
+        mocker.call(f"job-{job_2.id}-notification-outcomes"),
+        mocker.call(f"job-{job_1.id}-notification-outcomes"),
+    ]
 
 
-def test_get_jobs_should_return_no_stats_if_no_rows_in_notifications(admin_request, sample_template):
+def test_get_jobs_should_return_no_stats_if_no_rows_in_notifications(admin_request, sample_template, mocker):
     now = datetime.utcnow()
     earlier = datetime.utcnow() - timedelta(days=1)
     job_1 = create_job(sample_template, created_at=earlier)
     job_2 = create_job(sample_template, created_at=now)
+
+    mock_redis_get = mocker.patch("app.redis_store.get", return_value=None)
+    mocker.patch("app.redis_store.set", side_effect=AssertionError("Set call not expected"))
 
     resp_json = admin_request.get("job.get_jobs_by_service", service_id=sample_template.service_id)
 
@@ -796,10 +826,17 @@ def test_get_jobs_should_return_no_stats_if_no_rows_in_notifications(admin_reque
     assert resp_json["data"][0]["statistics"] == []
     assert resp_json["data"][1]["id"] == str(job_1.id)
     assert resp_json["data"][1]["statistics"] == []
+    assert mock_redis_get.mock_calls == [
+        mocker.call(f"job-{job_2.id}-notification-outcomes"),
+        mocker.call(f"job-{job_1.id}-notification-outcomes"),
+    ]
 
 
-def test_get_jobs_should_paginate(admin_request, sample_template):
+def test_get_jobs_should_paginate(admin_request, sample_template, mocker):
     create_10_jobs(sample_template)
+
+    mock_redis_get = mocker.patch("app.redis_store.get", return_value=None)
+    mocker.patch("app.redis_store.set", side_effect=AssertionError("Set call not expected"))
 
     with set_config(admin_request.app, "PAGE_SIZE", 2):
         resp_json = admin_request.get("job.get_jobs_by_service", service_id=sample_template.service_id)
@@ -810,10 +847,14 @@ def test_get_jobs_should_paginate(admin_request, sample_template):
     assert resp_json["total"] == 10
     assert "links" in resp_json
     assert set(resp_json["links"].keys()) == {"next", "last"}
+    assert len(mock_redis_get.mock_calls) == 2
 
 
-def test_get_jobs_accepts_page_parameter(admin_request, sample_template):
+def test_get_jobs_accepts_page_parameter(admin_request, sample_template, mocker):
     create_10_jobs(sample_template)
+
+    mock_redis_get = mocker.patch("app.redis_store.get", return_value=None)
+    mocker.patch("app.redis_store.set", side_effect=AssertionError("Set call not expected"))
 
     with set_config(admin_request.app, "PAGE_SIZE", 2):
         resp_json = admin_request.get("job.get_jobs_by_service", service_id=sample_template.service_id, page=2)
@@ -824,6 +865,10 @@ def test_get_jobs_accepts_page_parameter(admin_request, sample_template):
     assert resp_json["total"] == 10
     assert "links" in resp_json
     assert set(resp_json["links"].keys()) == {"prev", "next", "last"}
+    assert mock_redis_get.mock_calls == [
+        mocker.call(f'job-{resp_json["data"][0]["id"]}-notification-outcomes'),
+        mocker.call(f'job-{resp_json["data"][1]["id"]}-notification-outcomes'),
+    ]
 
 
 @pytest.mark.parametrize(
@@ -839,7 +884,7 @@ def test_get_jobs_accepts_page_parameter(admin_request, sample_template):
         ("foo", []),
     ],
 )
-def test_get_jobs_can_filter_on_statuses(admin_request, sample_template, statuses_filter, expected_statuses):
+def test_get_jobs_can_filter_on_statuses(admin_request, sample_template, statuses_filter, expected_statuses, mocker):
     create_job(sample_template, job_status="pending")
     create_job(sample_template, job_status="in progress")
     create_job(sample_template, job_status="finished")
@@ -850,11 +895,15 @@ def test_get_jobs_can_filter_on_statuses(admin_request, sample_template, statuse
     create_job(sample_template, job_status="sent to dvla")
     create_job(sample_template, job_status="error")
 
+    mock_redis_get = mocker.patch("app.redis_store.get", return_value=None)
+    mocker.patch("app.redis_store.set", side_effect=AssertionError("Set call not expected"))
+
     resp_json = admin_request.get(
         "job.get_jobs_by_service", service_id=sample_template.service_id, statuses=statuses_filter
     )
 
     assert {x["job_status"] for x in resp_json["data"]} == set(expected_statuses)
+    assert len(mock_redis_get.mock_calls) == len(expected_statuses)
 
 
 def create_10_jobs(template):
@@ -890,7 +939,7 @@ def test_get_all_notifications_for_job_returns_csv_format(admin_request, sample_
 
 
 @freeze_time("2017-06-10 12:00")
-def test_get_jobs_should_retrieve_from_ft_notification_status_for_old_jobs(admin_request, sample_template):
+def test_get_jobs_should_retrieve_from_ft_notification_status_for_old_jobs(admin_request, sample_template, mocker):
     # it's the 10th today, so 3 days should include all of 7th, 8th, 9th, and some of 10th.
     just_three_days_ago = datetime(2017, 6, 6, 22, 59, 59)
     not_quite_three_days_ago = just_three_days_ago + timedelta(seconds=1)
@@ -914,6 +963,11 @@ def test_get_jobs_should_retrieve_from_ft_notification_status_for_old_jobs(admin
     # this isn't picked up because we're using the ft status table for job_1 as it's old
     create_notification(job=job_1, status="created", created_at=not_quite_three_days_ago)
 
+    mock_redis_get = mocker.patch(
+        "app.redis_store.get",
+        return_value=None,
+    )
+
     resp_json = admin_request.get("job.get_jobs_by_service", service_id=sample_template.service_id)
 
     assert resp_json["data"][0]["id"] == str(job_3.id)
@@ -922,6 +976,11 @@ def test_get_jobs_should_retrieve_from_ft_notification_status_for_old_jobs(admin
     assert resp_json["data"][1]["statistics"] == [{"status": "created", "count": 1}]
     assert resp_json["data"][2]["id"] == str(job_1.id)
     assert resp_json["data"][2]["statistics"] == [{"status": "delivered", "count": 6}]
+    assert mock_redis_get.mock_calls == [
+        mocker.call(f'job-{resp_json["data"][0]["id"]}-notification-outcomes'),
+        mocker.call(f'job-{resp_json["data"][1]["id"]}-notification-outcomes'),
+        mocker.call(f'job-{resp_json["data"][2]["id"]}-notification-outcomes'),
+    ]
 
 
 @freeze_time("2017-07-17 07:17")
