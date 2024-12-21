@@ -39,6 +39,7 @@ from app.dao.users_dao import create_secret_code, create_user_code
 from app.history_meta import create_history
 from app.models import (
     ApiKey,
+    InboundSmsHistory,
     InvitedUser,
     Job,
     Notification,
@@ -1041,6 +1042,22 @@ def sample_inbound_numbers(sample_service):
     inbound_numbers.append(create_inbound_number(number="2", provider="mmg", active=False, service_id=service.id))
     inbound_numbers.append(create_inbound_number(number="3", provider="firetext", service_id=sample_service.id))
     return inbound_numbers
+
+
+@pytest.fixture
+def sample_inbound_sms_history(notify_db_session, sample_service):
+    inbound_sms = InboundSmsHistory(
+        id=uuid.uuid4(),
+        created_at=datetime.utcnow(),
+        service_id=sample_service.id,
+        notify_number="3",
+        provider_date=datetime.utcnow(),
+        provider_reference="reference-id",
+        provider="firetext",
+    )
+    notify_db_session.add(inbound_sms)
+    notify_db_session.commit()
+    return inbound_sms
 
 
 @pytest.fixture

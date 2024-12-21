@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from sqlalchemy import desc
 
 from app import db
@@ -106,3 +108,12 @@ def _raise_when_no_default(old_default):
     # check that the update is not updating the only default to false
     if not old_default:
         raise Exception("You must have at least one SMS sender as the default.", 400)
+
+
+@autocommit
+def dao_remove_inbound_sms_senders(service_id: UUID):
+    return (
+        ServiceSmsSender.query.filter_by(service_id=service_id)
+        .filter(ServiceSmsSender.inbound_number_id.isnot(None))
+        .delete(synchronize_session="fetch")
+    )

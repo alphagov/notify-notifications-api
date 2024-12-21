@@ -1,8 +1,13 @@
+import uuid
 from datetime import datetime, timedelta
 
 import pytest
+from dateutil.parser import parse
 from freezegun import freeze_time
 
+from app.constants import INBOUND_SMS_TYPE
+from app.dao.inbound_numbers_dao import dao_get_inbound_number, dao_get_inbound_number_for_service
+from app.dao.service_sms_sender_dao import dao_add_sms_sender_for_service, dao_get_sms_senders_by_service_id
 from tests.app.db import (
     create_inbound_sms,
     create_service,
@@ -223,3 +228,121 @@ def test_get_inbound_sms_for_service_respects_data_retention(admin_request, samp
         "2017-04-06T12:00:00.000000Z",
         "2017-04-05T12:00:00.000000Z",
     ]
+
+
+@pytest.mark.parametrize(
+    "payload, expected_error",
+    [
+        # Missing required field
+        ({}, "archive is a required property"),
+        # Invalid field type
+        ({"archive": "not-a-boolean"}, "archive not-a-boolean is not of type boolean"),
+        # Additional fields not allowed
+        (
+            {"archive": True, "extra_field": "not allowed"},
+            "Additional properties are not allowed (extra_field was unexpected)",
+        ),
+    ],
+)
+def test_remove_inbound_sms_capability(admin_request, sample_service, payload, expected_error):
+    response = admin_request.post(
+        "inbound_sms.remove_inbound_sms_capability", service_id=sample_service.id, _data=payload, _expected_status=400
+    )
+
+    assert response["errors"][0]["message"] == expected_error
+
+
+@pytest.mark.parametrize(
+    "payload, inbound_number, expected_active_status",
+    [
+        ({"archive": True}, "7654321", False),
+        ({"archive": False}, "1234567", True),
+    ],
+)
+def test_remove_inbound_sms_capability_success(
+    admin_request, sample_service_full_permissions, payload, inbound_number, expected_active_status
+):
+    service = sample_service_full_permissions
+    service_inbound = dao_get_inbound_number_for_service(service.id)
+    dao_add_sms_sender_for_service(service.id, inbound_number, is_default=True, inbound_number_id=service_inbound.id)
+    sms_senders = dao_get_sms_senders_by_service_id(service.id)
+
+    # check initial service permission, sms_sender row with inbound_number_id and inbound number status
+    assert (service.has_permission(INBOUND_SMS_TYPE)) is True
+    assert any(x.inbound_number_id is not None and x.sms_sender == inbound_number for x in sms_senders) is True
+    assert service_inbound.active is True
+    assert service_inbound.service_id is not None
+
+    admin_request.post(
+        "inbound_sms.remove_inbound_sms_capability",
+        service_id=service.id,
+        _data=payload,
+        _expected_status=200,
+    )
+    sms_senders = dao_get_sms_senders_by_service_id(service.id)
+    updated_service_inbound = dao_get_inbound_number_for_service(service.id)
+    inbound = dao_get_inbound_number(service_inbound.id)
+
+    assert (service.has_permission(INBOUND_SMS_TYPE)) is False
+    assert any(x.inbound_number_id is not None and x.sms_sender == inbound_number for x in sms_senders) is False
+    assert updated_service_inbound is None
+    assert inbound.service_id is None
+    assert inbound.active is expected_active_status
+
+
+def test_remove_inbound_sms_capability_success_without_sms_type_permission(admin_request, sample_service):
+    service = create_service_with_inbound_number(
+        inbound_number="76543953521", service_name=f"service name {uuid.uuid4()}"
+    )
+    assert service.has_permission(INBOUND_SMS_TYPE) is False
+
+    admin_request.post(
+        "inbound_sms.remove_inbound_sms_capability",
+        service_id=service.id,
+        _data={"archive": True},
+        _expected_status=200,
+    )
+
+
+def test_remove_inbound_sms_capability_success_without_inbound_number(admin_request, sample_service):
+    admin_request.post(
+        "inbound_sms.remove_inbound_sms_capability",
+        service_id=sample_service.id,
+        _data={"archive": True},
+        _expected_status=200,
+    )
+
+
+def test_get_most_recent_inbound_usage_date_success(
+    admin_request, sample_service, sample_inbound_numbers, sample_inbound_sms_history
+):
+    response = admin_request.get(
+        "inbound_sms.get_most_recent_inbound_usage_date", service_id=sample_service.id, _expected_status=200
+    )
+
+    assert response is not None
+    response_date = parse(response["most_recent_date"])
+
+    assert response_date.date() == datetime.utcnow().date()
+
+
+def test_get_most_recent_inbound_usage_date_success_no_usage_found(
+    admin_request, sample_service, sample_inbound_numbers
+):
+    response = admin_request.get(
+        "inbound_sms.get_most_recent_inbound_usage_date", service_id=sample_service.id, _expected_status=200
+    )
+
+    assert response is not None
+    assert response["most_recent_date"] is None
+
+
+def test_get_most_recent_inbound_usage_date_404_no_inbound(
+    admin_request,
+    sample_service,
+):
+    response = admin_request.get(
+        "inbound_sms.get_most_recent_inbound_usage_date", service_id=sample_service.id, _expected_status=404
+    )
+
+    assert response["message"] == "inbound not found"

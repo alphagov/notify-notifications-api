@@ -2,6 +2,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from app.dao.inbound_numbers_dao import (
+    archive_or_release_inbound_number_for_service,
     dao_allocate_number_for_service,
     dao_get_available_inbound_numbers,
     dao_get_inbound_number_for_service,
@@ -104,3 +105,25 @@ def test_dao_allocate_number_for_service_raises_if_invalid_inbound_number(notify
     with pytest.raises(Exception) as exc:
         dao_allocate_number_for_service(service_id=service.id, inbound_number_id=fake_uuid)
     assert "is not available" in str(exc.value)
+
+
+def test_archive_or_release_inbound_number_for_service_archive(sample_service, sample_inbound_numbers):
+    inbound = next((inbound for inbound in sample_inbound_numbers if inbound.service_id == sample_service.id), None)
+
+    archive_or_release_inbound_number_for_service(sample_service.id, True)
+
+    updated_inbound = InboundNumber.query.filter_by(number=inbound.number).one_or_none()
+
+    assert updated_inbound.service_id is None
+    assert updated_inbound.active is False
+
+
+def test_archive_or_release_inbound_number_for_service_release(sample_service, sample_inbound_numbers):
+    inbound = next((inbound for inbound in sample_inbound_numbers if inbound.service_id == sample_service.id), None)
+
+    archive_or_release_inbound_number_for_service(sample_service.id, False)
+
+    updated_inbound = InboundNumber.query.filter_by(number=inbound.number).one_or_none()
+
+    assert updated_inbound.service_id is None
+    assert updated_inbound.active is True

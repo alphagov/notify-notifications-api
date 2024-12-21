@@ -8,6 +8,7 @@ from app.dao.service_sms_sender_dao import (
     dao_add_sms_sender_for_service,
     dao_get_service_sms_senders_by_id,
     dao_get_sms_senders_by_service_id,
+    dao_remove_inbound_sms_senders,
     dao_update_service_sms_sender,
     update_existing_sms_sender_with_inbound_number,
 )
@@ -212,3 +213,30 @@ def test_archive_sms_sender_raises_an_error_if_attempting_to_archive_an_inbound_
 
     assert "You cannot delete an inbound number" in str(e.value)
     assert not inbound_number.archived
+
+
+def test_dao_remove_inbound_sms_senders():
+    inbound_number = "7654321"
+    service = create_service_with_inbound_number(inbound_number, service_name="inbound number service")
+    sms_senders = dao_get_sms_senders_by_service_id(service.id)
+    assert len(sms_senders) == 1
+    assert any(x.sms_sender == inbound_number for x in sms_senders) is True
+    assert sms_senders[0].inbound_number_id is not None
+
+    # adding null inbound_number_id for sms_sender
+    dao_add_sms_sender_for_service(service.id, "second", is_default=True)
+
+    sms_senders = dao_get_sms_senders_by_service_id(service.id)
+    assert len(sms_senders) == 2
+    assert any(x.inbound_number_id is None for x in sms_senders) is True
+
+    # removing only rows that are not null
+    dao_remove_inbound_sms_senders(service.id)
+
+    sms_senders = dao_get_sms_senders_by_service_id(service.id)
+    assert len(sms_senders) == 1
+
+    # check value with null inbound_number_id is still present
+    assert any(x.inbound_number_id is None for x in sms_senders) is True
+    # check value that had inbound_number_id is gone
+    assert any(x.inbound_number_id is not None for x in sms_senders) is False

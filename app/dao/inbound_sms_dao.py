@@ -1,3 +1,6 @@
+from datetime import datetime
+from uuid import UUID
+
 from flask import current_app
 from sqlalchemy import and_, desc
 from sqlalchemy.dialects.postgresql import insert
@@ -7,8 +10,10 @@ from app import db
 from app.constants import SMS_TYPE
 from app.dao.dao_utils import autocommit
 from app.models import (
+    InboundNumber,
     InboundSms,
     InboundSmsHistory,
+    Notification,
     Service,
     ServiceDataRetention,
 )
@@ -179,3 +184,46 @@ def dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service(service
     )
 
     return q.paginate(page=page, per_page=current_app.config["PAGE_SIZE"])
+
+
+def dao_get_most_recent_inbound_usage_date(service_id: UUID, inbound: InboundNumber) -> datetime | None:
+    last_notification = (
+        Notification.query.filter(
+            Notification.reply_to_text == inbound.number,
+            Notification.service_id == service_id,
+        )
+        .order_by(Notification.created_at.desc())
+        .first()
+    )
+
+    last_inbound_sms = (
+        InboundSms.query.filter(
+            InboundSms.notify_number == inbound.number,
+            InboundSms.service_id == service_id,
+        )
+        .order_by(InboundSms.created_at.desc())
+        .first()
+    )
+
+    last_inbound_sms_history = (
+        InboundSmsHistory.query.filter(
+            InboundSmsHistory.notify_number == inbound.number,
+            InboundSmsHistory.service_id == service_id,
+        )
+        .order_by(InboundSmsHistory.created_at.desc())
+        .first()
+    )
+
+    most_recent_usage = max(
+        filter(
+            None,
+            [
+                last_notification.created_at if last_notification else None,
+                last_inbound_sms.created_at if last_inbound_sms else None,
+                last_inbound_sms_history.created_at if last_inbound_sms_history else None,
+            ],
+        ),
+        default=None,
+    )
+
+    return most_recent_usage
