@@ -91,7 +91,6 @@ for local testing, and SSM is for the pipeline.
 
 def apply_fixtures():
     functional_test_password = str(uuid4())
-    functional_test_env_file = os.getenv("FUNCTIONAL_TEST_ENV_FILE", "/tmp/functional_test_env.sh")
     request_bin_api_token = os.getenv("REQUEST_BIN_API_TOKEN")
     environment = current_app.config["NOTIFY_ENVIRONMENT"]
     test_email_username = os.getenv("TEST_EMAIL_USERNAME", "notify-tests-preview")
@@ -100,7 +99,51 @@ def apply_fixtures():
     function_tests_live_key_name = "functional_tests_service_live_key"
     function_tests_test_key_name = "functional_tests_service_test_key"
     govuk_service_id = current_app.config["NOTIFY_SERVICE_ID"]
+
+    functional_test_config = _create_db_objects(
+        functional_test_password,
+        request_bin_api_token,
+        environment,
+        test_email_username,
+        email_domain,
+        function_tests_govuk_key_name,
+        function_tests_live_key_name,
+        function_tests_test_key_name,
+        govuk_service_id,
+    )
+
+    functional_test_env_file = os.getenv("FUNCTIONAL_TEST_ENV_FILE", "/tmp/functional_test_env.sh")
+    if functional_test_env_file != "":
+        with open(functional_test_env_file, "w") as f:
+            f.write(functional_test_config)
+
     ssm_upload_path = os.getenv("SSM_UPLOAD_PATH")
+    if ssm_upload_path:
+        ssm = boto3.client("ssm")
+        response = ssm.put_parameter(
+            Name=ssm_upload_path,
+            Value=functional_test_config,
+            Type="SecureString",
+            Overwrite=True,
+        )
+
+        if response["ResponseMetadata"]["HTTPStatusCode"] != 200:
+            raise Exception("Failed to upload to SSM")
+
+    current_app.logger.info("--> Functional test fixtures completed successfully")
+
+
+def _create_db_objects(
+    functional_test_password,
+    request_bin_api_token,
+    environment,
+    test_email_username,
+    email_domain,
+    function_tests_govuk_key_name,
+    function_tests_live_key_name,
+    function_tests_test_key_name,
+    govuk_service_id,
+):
 
     current_app.logger.info("Creating functional test fixtures for %s:", environment)
 
@@ -244,7 +287,7 @@ def apply_fixtures():
     current_app.logger.info("--> Ensure dummy inbound SMS objects exist")
     _create_inbound_sms(service, 3)
 
-    functional_test_config = f"""
+    return f"""
 
 # Functional test environment
 
@@ -301,24 +344,6 @@ export API_SENDING_KEY='{function_tests_live_key_name}-{service.id}-{api_key_liv
 export INBOUND_SMS_QUERY_KEY='{function_tests_test_key_name}-{service.id}-{api_key_test_key.secret}'
 
 """
-
-    if functional_test_env_file != "":
-        with open(functional_test_env_file, "w") as f:
-            f.write(functional_test_config)
-
-    if ssm_upload_path:
-        ssm = boto3.client("ssm")
-        response = ssm.put_parameter(
-            Name=ssm_upload_path,
-            Value=functional_test_config,
-            Type="SecureString",
-            Overwrite=True,
-        )
-
-        if response["ResponseMetadata"]["HTTPStatusCode"] != 200:
-            raise Exception("Failed to upload to SSM")
-
-    current_app.logger.info("--> Functional test fixtures completed successfully")
 
 
 def _create_user(name, email_address, password, auth_type="sms_auth", organisations=None, mobile_number=None):
