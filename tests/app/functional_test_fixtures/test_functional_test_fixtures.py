@@ -91,7 +91,6 @@ def test_function_test_fixtures_saves_to_disk_and_ssm(notify_api, os_environ, mo
     with NamedTemporaryFile(delete=False) as temp_file:
         temp_file_name = temp_file.name
 
-    os.environ["REQUEST_BIN_API_TOKEN"] = "test_request_bin_token"
     os.environ["FUNCTIONAL_TEST_ENV_FILE"] = temp_file_name
     os.environ["SSM_UPLOAD_PATH"] = "/test/ssm/environment"
     # AWS are changing from AWS_DEFAULT_REGION to AWS_REGION for v2 clients. Set both for now.
@@ -100,27 +99,14 @@ def test_function_test_fixtures_saves_to_disk_and_ssm(notify_api, os_environ, mo
     try:
         # repeat twice to test idempotence
         for _ in range(2):
-            with set_config_values(
-                notify_api,
-                {
-                    "NOTIFY_ENVIRONMENT": "dev-env",
-                    "MMG_INBOUND_SMS_USERNAME": ["test_mmg_username"],
-                    "MMG_INBOUND_SMS_AUTH": ["test_mmg_password"],
-                    "SECRET_KEY": "notify_secret_key",
-                    "INTERNAL_CLIENT_API_KEYS": {"notify-functional-tests": ["functional-tests-secret-key"]},
-                    "ADMIN_BASE_URL": "http://localhost:6012",
-                    "API_HOST_NAME": "http://localhost:6011",
-                    "FROM_NUMBER": "testing",
-                },
-            ):
-                apply_fixtures()
+            apply_fixtures()
 
             variables = {}
             full_file = ""
             with open(temp_file_name) as f:
                 for line in f:
                     full_file += line
-                    if not line.strip() or line.strip().startswith("#"):
+                    if not line.strip():
                         continue
                     line = line.replace("export ", "")
                     key, value = line.strip().split("=")
