@@ -292,7 +292,7 @@ def _create_db_objects(
     return {
         "FUNCTIONAL_TESTS_API_HOST": current_app.config["API_HOST_NAME"],
         "FUNCTIONAL_TESTS_ADMIN_HOST": current_app.config["ADMIN_BASE_URL"],
-        "ENVIRONMENT": current_app.config["NOTIFY_ENVIRONMENT"],
+        "ENVIRONMENT": environment,
         "FUNCTIONAL_TEST_EMAIL": func_test_user.email_address,
         "FUNCTIONAL_TEST_PASSWORD": functional_test_password,
         "TEST_NUMBER": "07700900001",
