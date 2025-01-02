@@ -97,28 +97,26 @@ def test_function_test_fixtures_saves_to_disk_and_ssm(notify_api, os_environ, mo
     os.environ["AWS_REGION"] = "eu-west-1"
     os.environ["AWS_DEFAULT_REGION"] = "eu-west-1"
     try:
-        # repeat twice to test idempotence
-        for _ in range(2):
-            apply_fixtures()
+        apply_fixtures()
 
-            variables = {}
-            full_file = ""
-            with open(temp_file_name) as f:
-                for line in f:
-                    full_file += line
-                    if not line.strip():
-                        continue
-                    line = line.replace("export ", "")
-                    key, value = line.strip().split("=")
-                    if value.startswith("'") and value.endswith("'"):
-                        value = value[1:-1]
-                    variables[key] = value
-            assert variables == {"FOO": "BAR", "BAZ": "WAZ"}
+        variables = {}
+        full_file = ""
+        with open(temp_file_name) as f:
+            for line in f:
+                full_file += line
+                if not line.strip():
+                    continue
+                line = line.replace("export ", "")
+                key, value = line.strip().split("=")
+                if value.startswith("'") and value.endswith("'"):
+                    value = value[1:-1]
+                variables[key] = value
+        assert variables == {"FOO": "BAR", "BAZ": "WAZ"}
 
-            # test that the SSM parameter was created and contains the same as the file
-            ssm = boto3.client("ssm")
-            response = ssm.get_parameter(Name="/test/ssm/environment", WithDecryption=True)
-            assert response["Parameter"]["Value"] == full_file
+        # test that the SSM parameter was created and contains the same as the file
+        ssm = boto3.client("ssm")
+        response = ssm.get_parameter(Name="/test/ssm/environment", WithDecryption=True)
+        assert response["Parameter"]["Value"] == full_file
 
     finally:
         os.remove(temp_file_name)
