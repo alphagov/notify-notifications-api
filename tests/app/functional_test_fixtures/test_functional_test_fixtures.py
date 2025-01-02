@@ -1,4 +1,5 @@
 import os
+import re
 from tempfile import NamedTemporaryFile
 
 import boto3
@@ -102,15 +103,10 @@ def test_function_test_fixtures_saves_to_disk_and_ssm(notify_api, os_environ, mo
         variables = {}
         full_file = ""
         with open(temp_file_name) as f:
-            for line in f:
-                full_file += line
-                if not line.strip():
-                    continue
-                line = line.replace("export ", "")
-                key, value = line.strip().split("=")
-                if value.startswith("'") and value.endswith("'"):
-                    value = value[1:-1]
-                variables[key] = value
+            full_file = f.read()
+            for line in full_file.splitlines():
+                match = re.match(r"export (?P<key>[A-Z0-9_]+)='(?P<value>[^']+)'", line)
+                variables[match["key"]] = match["value"]
         assert variables == {"FOO": "BAR", "BAZ": "WAZ"}
 
         # test that the SSM parameter was created and contains the same as the file
