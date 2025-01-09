@@ -1,4 +1,5 @@
 import os
+import random
 from datetime import datetime
 from uuid import uuid4
 
@@ -129,6 +130,11 @@ def apply_fixtures():
     )
 
     current_app.logger.info("--> Ensure service exists")
+
+    for counter in range(301, 500):
+        service2 = _create_service2(org.id, service_admin_user, uuid4())
+        current_app.logger.info("%s %f", service2.id, counter)
+
     service = _create_service(org.id, service_admin_user)
 
     current_app.logger.info("--> Ensure users are added to service")
@@ -366,6 +372,28 @@ def _create_organiation(email_domain, org_name="Functional Tests Org"):
     return org
 
 
+def _create_service2(org_id, user, counter):
+
+    data = {
+        "name": f"Functional Tests {counter}",
+        "restricted": False,
+        "organisation_id": org_id,
+        "organisation_type": "central",
+        "created_by": user.id,
+        "sms_message_limit": 1000,
+        "letter_message_limit": 1000,
+        "email_message_limit": 1000,
+        "contact_link": current_app.config["ADMIN_BASE_URL"],
+        "go_live_at": "2017-04-01 11:09:00.061258",
+    }
+    service = Service.from_json(data)
+    dao_create_service(service, user)
+
+    set_default_free_allowance_for_service(service=service, year_start=None)
+
+    return service
+
+
 def _create_service(org_id, user, service_name="Functional Tests"):
 
     services = get_services_by_partial_name(service_name)
@@ -426,7 +454,7 @@ def _create_api_key(name, service_id, user_id, key_type="normal"):
     return valid_api_key
 
 
-def _create_inbound_numbers(service_id, user_id, number="07700900500", provider="mmg"):
+def _create_inbound_numbers(service_id, user_id, number="07700900", provider="mmg"):
 
     inbound_number = dao_get_inbound_number_for_service(service_id=service_id)
 
@@ -434,7 +462,7 @@ def _create_inbound_numbers(service_id, user_id, number="07700900500", provider=
         return inbound_number.id
 
     inbound_number = InboundNumber()
-    inbound_number.number = number
+    inbound_number.number = number + str(random.randrange(1000))
     inbound_number.provider = provider
     inbound_number.service_id = service_id
     inbound_number.active = True
