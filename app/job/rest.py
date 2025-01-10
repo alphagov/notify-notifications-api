@@ -11,9 +11,6 @@ from app.constants import (
     JOB_STATUS_SCHEDULED,
     LETTER_TYPE,
 )
-from app.dao.fact_notification_status_dao import (
-    fetch_notification_statuses_for_job,
-)
 from app.dao.jobs_dao import (
     can_letter_job_be_cancelled,
     dao_cancel_letter_job,
@@ -24,6 +21,7 @@ from app.dao.jobs_dao import (
     dao_get_scheduled_job_by_id_and_service_id,
     dao_get_scheduled_job_stats,
     dao_update_job,
+    get_possibly_cached_notification_outcomes_for_job,
 )
 from app.dao.notifications_dao import (
     dao_get_notification_count_for_job_id,
@@ -39,7 +37,7 @@ from app.schemas import (
     notifications_filter_schema,
     unarchived_template_schema,
 )
-from app.utils import midnight_n_days_ago, pagination_links
+from app.utils import pagination_links
 
 job_blueprint = Blueprint("job", __name__, url_prefix="/service/<uuid:service_id>/job")
 
@@ -220,15 +218,9 @@ def get_paginated_jobs(
         start = job_data["processing_started"]
         start = dateutil.parser.parse(start).replace(tzinfo=None) if start else None
 
-        if start is None:
-            statistics = []
-        elif start.replace(tzinfo=None) < midnight_n_days_ago(3):
-            # ft_notification_status table
-            statistics = fetch_notification_statuses_for_job(job_data["id"])
-        else:
-            # notifications table
-            statistics = dao_get_notification_outcomes_for_job(job_data["id"])
-        job_data["statistics"] = [{"status": statistic.status, "count": statistic.count} for statistic in statistics]
+        job_data["statistics"] = get_possibly_cached_notification_outcomes_for_job(
+            job_data["id"], job_data["notification_count"], start
+        )
 
     return {
         "data": data,

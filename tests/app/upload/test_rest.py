@@ -38,7 +38,7 @@ def create_precompiled_template(service):
 
 
 @freeze_time("2020-02-02 14:00")
-def test_get_uploads(admin_request, sample_template):
+def test_get_uploads(admin_request, sample_template, mocker):
     letter_template = create_precompiled_template(sample_template.service)
 
     create_uploaded_letter(
@@ -68,6 +68,9 @@ def test_get_uploads(admin_request, sample_template):
     )
 
     service_id = sample_template.service.id
+
+    mock_redis_get = mocker.patch("app.redis_store.get", return_value=None)
+    mocker.patch("app.redis_store.set", side_effect=AssertionError("Set call not expected"))
 
     resp_json = admin_request.get("upload.get_uploads_by_service", service_id=service_id)
     data = resp_json["data"]
@@ -103,8 +106,14 @@ def test_get_uploads(admin_request, sample_template):
         "upload_type": "job",
     }
 
+    assert mock_redis_get.mock_calls == [
+        mocker.call(f"job-{upload_5.id}-notification-outcomes"),
+        mocker.call(f"job-{upload_4.id}-notification-outcomes"),
+        mocker.call(f"job-{upload_2.id}-notification-outcomes"),
+    ]
 
-def test_get_uploads_should_return_statistics(admin_request, sample_template):
+
+def test_get_uploads_should_return_statistics(admin_request, sample_template, mocker):
     now = datetime.utcnow()
     earlier = datetime.utcnow() - timedelta(days=1)
     job_1 = create_job(template=sample_template, job_status="pending")
@@ -121,6 +130,9 @@ def test_get_uploads_should_return_statistics(admin_request, sample_template):
         letter_template, sample_template.service, status="delivered", created_at=datetime.utcnow() - timedelta(days=3)
     )
 
+    mock_redis_get = mocker.patch("app.redis_store.get", return_value=None)
+    mocker.patch("app.redis_store.set", side_effect=AssertionError("Set call not expected"))
+
     resp_json = admin_request.get("upload.get_uploads_by_service", service_id=sample_template.service_id)["data"]
     assert len(resp_json) == 4
     assert resp_json[0]["id"] == str(job_1.id)
@@ -132,10 +144,19 @@ def test_get_uploads_should_return_statistics(admin_request, sample_template):
     assert resp_json[3]["id"] is None
     assert resp_json[3]["statistics"] == []
 
+    assert mock_redis_get.mock_calls == [
+        mocker.call(f"job-{job_1.id}-notification-outcomes"),
+        mocker.call(f"job-{job_3.id}-notification-outcomes"),
+        mocker.call(f"job-{job_2.id}-notification-outcomes"),
+    ]
 
-def test_get_uploads_should_paginate(admin_request, sample_template):
+
+def test_get_uploads_should_paginate(admin_request, sample_template, mocker):
     for _ in range(10):
         create_job(sample_template)
+
+    mock_redis_get = mocker.patch("app.redis_store.get", return_value=None)
+    mocker.patch("app.redis_store.set", side_effect=AssertionError("Set call not expected"))
 
     with set_config(admin_request.app, "PAGE_SIZE", 2):
         resp_json = admin_request.get("upload.get_uploads_by_service", service_id=sample_template.service_id)
@@ -146,10 +167,18 @@ def test_get_uploads_should_paginate(admin_request, sample_template):
     assert "links" in resp_json
     assert set(resp_json["links"].keys()) == {"next", "last"}
 
+    assert mock_redis_get.mock_calls == [
+        mocker.call(f'job-{resp_json["data"][0]["id"]}-notification-outcomes'),
+        mocker.call(f'job-{resp_json["data"][1]["id"]}-notification-outcomes'),
+    ]
 
-def test_get_uploads_accepts_page_parameter(admin_request, sample_template):
+
+def test_get_uploads_accepts_page_parameter(admin_request, sample_template, mocker):
     for _ in range(10):
         create_job(sample_template)
+
+    mock_redis_get = mocker.patch("app.redis_store.get", return_value=None)
+    mocker.patch("app.redis_store.set", side_effect=AssertionError("Set call not expected"))
 
     with set_config(admin_request.app, "PAGE_SIZE", 2):
         resp_json = admin_request.get("upload.get_uploads_by_service", service_id=sample_template.service_id, page=2)
@@ -160,9 +189,14 @@ def test_get_uploads_accepts_page_parameter(admin_request, sample_template):
     assert "links" in resp_json
     assert set(resp_json["links"].keys()) == {"prev", "next", "last"}
 
+    assert mock_redis_get.mock_calls == [
+        mocker.call(f'job-{resp_json["data"][0]["id"]}-notification-outcomes'),
+        mocker.call(f'job-{resp_json["data"][1]["id"]}-notification-outcomes'),
+    ]
+
 
 @freeze_time("2017-06-10 12:00")
-def test_get_uploads_should_retrieve_from_ft_notification_status_for_old_jobs(admin_request, sample_template):
+def test_get_uploads_should_retrieve_from_ft_notification_status_for_old_jobs(admin_request, sample_template, mocker):
     # it's the 10th today, so 3 days should include all of 7th, 8th, 9th, and some of 10th.
     just_three_days_ago = datetime(2017, 6, 6, 22, 59, 59)
     not_quite_three_days_ago = just_three_days_ago + timedelta(seconds=1)
@@ -186,6 +220,9 @@ def test_get_uploads_should_retrieve_from_ft_notification_status_for_old_jobs(ad
     # this isn't picked up because we're using the ft status table for job_1 as it's old
     create_notification(job=job_1, status="created", created_at=not_quite_three_days_ago)
 
+    mock_redis_get = mocker.patch("app.redis_store.get", return_value=None)
+    mocker.patch("app.redis_store.set", side_effect=AssertionError("Set call not expected"))
+
     resp_json = admin_request.get("upload.get_uploads_by_service", service_id=sample_template.service_id)["data"]
 
     assert resp_json[0]["id"] == str(job_3.id)
@@ -194,6 +231,12 @@ def test_get_uploads_should_retrieve_from_ft_notification_status_for_old_jobs(ad
     assert resp_json[1]["statistics"] == [{"status": "created", "count": 1}]
     assert resp_json[2]["id"] == str(job_1.id)
     assert resp_json[2]["statistics"] == [{"status": "delivered", "count": 6}]
+
+    assert mock_redis_get.mock_calls == [
+        mocker.call(f'job-{resp_json[0]["id"]}-notification-outcomes'),
+        mocker.call(f'job-{resp_json[1]["id"]}-notification-outcomes'),
+        mocker.call(f'job-{resp_json[2]["id"]}-notification-outcomes'),
+    ]
 
 
 @freeze_time("2020-02-02 14:00")

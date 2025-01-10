@@ -2,17 +2,14 @@ from datetime import datetime
 
 from flask import Blueprint, abort, current_app, jsonify, request
 
-from app.dao.fact_notification_status_dao import (
-    fetch_notification_statuses_for_job,
-)
-from app.dao.jobs_dao import dao_get_notification_outcomes_for_job
+from app.dao.jobs_dao import get_possibly_cached_notification_outcomes_for_job
 from app.dao.uploads_dao import (
     dao_get_uploaded_letters_by_print_date,
     dao_get_uploads_by_service_id,
 )
 from app.errors import register_errors
 from app.schemas import notification_with_template_schema
-from app.utils import midnight_n_days_ago, pagination_links
+from app.utils import pagination_links
 
 upload_blueprint = Blueprint("upload", __name__, url_prefix="/service/<uuid:service_id>/upload")
 
@@ -49,19 +46,9 @@ def get_paginated_uploads(service_id, limit_days, page):
             "recipient": upload.recipient,
         }
         if upload.upload_type == "job":
-            start = upload.processing_started
-
-            if start is None:
-                statistics = []
-            elif start.replace(tzinfo=None) < midnight_n_days_ago(3):
-                # ft_notification_status table
-                statistics = fetch_notification_statuses_for_job(upload.id)
-            else:
-                # notifications table
-                statistics = dao_get_notification_outcomes_for_job(upload.id)
-            upload_dict["statistics"] = [
-                {"status": statistic.status, "count": statistic.count} for statistic in statistics
-            ]
+            upload_dict["statistics"] = get_possibly_cached_notification_outcomes_for_job(
+                upload.id, upload.notification_count, upload.processing_started
+            )
         else:
             upload_dict["statistics"] = []
         data.append(upload_dict)

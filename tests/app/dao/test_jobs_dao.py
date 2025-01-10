@@ -1,4 +1,6 @@
+import json
 import uuid
+from collections import Counter
 from datetime import datetime, timedelta
 from functools import partial
 
@@ -20,9 +22,11 @@ from app.dao.jobs_dao import (
     dao_update_job,
     find_jobs_with_missing_rows,
     find_missing_row_for_job,
+    get_possibly_cached_notification_outcomes_for_job,
 )
 from app.models import Job
 from tests.app.db import (
+    create_ft_notification_status,
     create_job,
     create_notification,
     create_service,
@@ -566,3 +570,195 @@ def test_unique_key_on_job_id_and_job_row_number_no_error_if_row_number_for_diff
     job_2 = create_job(template=sample_email_template)
     create_notification(job=job_1, job_row_number=0)
     create_notification(job=job_2, job_row_number=0)
+
+
+@pytest.mark.parametrize(
+    [
+        "notification_statuses",
+        "notification_count",
+        "processing_started",
+        "create_notifications",
+        "expect_redis_set",
+        "expected_retval",
+    ],
+    (
+        (
+            (
+                "permanent-failure",
+                "delivered",
+                "permanent-failure",
+                "technical-failure",
+                "technical-failure",
+                "permanent-failure",
+            ),
+            6,
+            datetime.fromisoformat("2020-02-10T09:00:00"),
+            True,
+            True,
+            [
+                {"status": "delivered", "count": 1},
+                {"status": "permanent-failure", "count": 3},
+                {"status": "technical-failure", "count": 2},
+            ],
+        ),
+        (
+            (
+                "sent",
+                "delivered",
+                "delivered",
+                "delivered",
+            ),
+            4,
+            datetime.fromisoformat("2020-02-09T09:00:00"),
+            True,
+            True,
+            [
+                {"status": "delivered", "count": 3},
+                {"status": "sent", "count": 1},
+            ],
+        ),
+        (
+            (
+                "technical-failure",
+                "delivered",
+                "technical-failure",
+            ),
+            3,
+            datetime.fromisoformat("2020-02-04T09:00:00"),  # so from ft_notification_status
+            False,
+            True,
+            [
+                {"status": "technical-failure", "count": 2},
+                {"status": "delivered", "count": 1},
+            ],
+        ),
+        (
+            (
+                "technical-failure",
+                "delivered",
+                "created",
+                "technical-failure",
+            ),
+            4,
+            datetime.fromisoformat("2020-02-09T23:59:58"),
+            True,
+            False,  # because non-complete status
+            [
+                {"status": "technical-failure", "count": 2},
+                {"status": "created", "count": 1},
+                {"status": "delivered", "count": 1},
+            ],
+        ),
+        (
+            (
+                "sent",
+                "delivered",
+                "delivered",
+            ),
+            4,
+            datetime.fromisoformat("2020-02-10T09:00:00"),
+            True,
+            False,  # because missing rows
+            [
+                {"status": "delivered", "count": 2},
+                {"status": "sent", "count": 1},
+            ],
+        ),
+        (
+            (
+                "delivered",
+                "created",
+                "delivered",
+            ),
+            3,
+            None,
+            True,
+            False,  # because non-complete status
+            [],
+        ),
+    ),
+)
+def test_get_possibly_cached_notification_outcomes_for_job_empty_cache(
+    sample_email_template,
+    notification_statuses,
+    notification_count,
+    processing_started,
+    create_notifications,
+    expect_redis_set,
+    expected_retval,
+    mocker,
+):
+    call_datetime = datetime.fromisoformat("2020-02-10T10:00:00")
+    ft_status_bins = Counter()
+
+    with freeze_time(processing_started) as frozen_time:
+        job = create_job(template=sample_email_template, processing_started=processing_started)
+        for i, status in enumerate(notification_statuses):
+            frozen_time.tick()
+
+            if create_notifications:
+                create_notification(job=job, status=status, job_row_number=i)
+
+            d = datetime.now().date()
+            if d != call_datetime.date():
+                ft_status_bins[d, status] += 1
+
+    for (d, status), count in ft_status_bins.items():
+        create_ft_notification_status(
+            bst_date=d,
+            notification_type="email",
+            service=job.service,
+            job=job,
+            template=job.template,
+            key_type="normal",
+            notification_status=status,
+            count=count,
+        )
+
+    mock_redis_get = mocker.patch("app.redis_store.get", return_value=None)
+    mock_redis_set = mocker.patch("app.redis_store.set", return_value=None)
+
+    with freeze_time(call_datetime):
+        retval = get_possibly_cached_notification_outcomes_for_job(job.id, notification_count, processing_started)
+
+    assert sorted(retval, key=lambda x: x["status"]) == sorted(expected_retval, key=lambda x: x["status"])
+
+    if expect_redis_set:
+        assert mock_redis_set.mock_calls == [
+            mocker.call(
+                f"job-{job.id}-notification-outcomes", json.dumps(retval), ex=timedelta(days=1).total_seconds()
+            ),
+        ]
+    else:
+        assert not mock_redis_set.mock_calls
+
+    assert mock_redis_get.mock_calls == [
+        mocker.call(f"job-{job.id}-notification-outcomes"),
+    ]
+
+
+def test_get_possibly_cached_notification_outcomes_for_job_present_cache(
+    fake_uuid,
+    mocker,
+):
+    mocker.patch(
+        "app.dao.jobs_dao.fetch_notification_statuses_for_job",
+        side_effect=AssertionError("fetch_notification_statuses_for_job call not expected"),
+    )
+    mocker.patch(
+        "app.dao.jobs_dao.dao_get_notification_outcomes_for_job",
+        side_effect=AssertionError("dao_get_notification_outcomes_for_job call not expected"),
+    )
+
+    mock_redis_get = mocker.patch(
+        "app.redis_store.get", return_value=b'[{"status": "delivered", "count": 12}, {"status": "sent", "count": 34}]'
+    )
+    mocker.patch("app.redis_store.set", return_value=AssertionError("redis set call not expected"))
+
+    retval = get_possibly_cached_notification_outcomes_for_job(fake_uuid, 46, datetime.now())
+
+    assert retval == [{"status": "delivered", "count": 12}, {"status": "sent", "count": 34}]
+
+    assert mock_redis_get.mock_calls == [
+        mocker.call(f"job-{fake_uuid}-notification-outcomes"),
+    ]
