@@ -7,8 +7,6 @@ flask-marshmallow==1.3.0
 Flask-Migrate==3.1.0
 flask-sqlalchemy==3.0.5
 click-datetime==0.2
-# We originally pinned this due to eventlet v0.33 compatibility issues. That was supposedly fixed in version v21.0.0 and we merged v21.2.0 for a while. Until we ran a load test again, and identified that the bumped version of gunicorn led to a 33%+ drop-off in performance/requests per second that the API was able to handle. If a version greater than 21.2.0 is released, and it either gives us something we need or we think it addresses said performance issues, make sure to run a load test in staging before releasing to production.
-gunicorn[eventlet] @ git+https://github.com/benoitc/gunicorn.git@1299ea9e967a61ae2edebe191082fd169b864c64
 iso8601==2.1.0
 jsonschema[format]==4.23.0
 marshmallow-sqlalchemy==0.28.1
