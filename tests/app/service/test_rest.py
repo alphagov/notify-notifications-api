@@ -3504,7 +3504,7 @@ def test_get_returned_letter(admin_request, sample_letter_template):
     assert response[0]["template_version"] == sample_letter_template.version
     assert response[0]["user_name"] == sample_letter_template.service.users[0].name
     assert response[0]["original_file_name"] == job.original_file_name
-    assert response[0]["job_row_number"] == 3
+    assert response[0]["job_row_number"] == 4
     assert not response[0]["uploaded_letter_file_name"]
 
     assert response[1]["notification_id"] == str(one_off_letter.id)

@@ -107,7 +107,9 @@ def fetch_returned_letters(service_id, report_date):
                 User.name.label("user_name"),
                 User.email_address,
                 Job.original_file_name,
-                (table.job_row_number + 1).label("job_row_number"),  # row numbers start at 0
+                # row numbers in notifications db table start at 0, but in spreadsheet uploaded by service user
+                # the recipient rows would start at row 2 (row 1 is column headers).
+                (table.job_row_number + 2).label("job_row_number"),
             )
             .outerjoin(User, table.created_by_id == User.id)
             .outerjoin(Job, table.job_id == Job.id)

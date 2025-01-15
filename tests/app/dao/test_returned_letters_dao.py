@@ -270,7 +270,7 @@ def test_fetch_returned_letters_with_jobs(sample_letter_job):
         None,
         None,
         sample_letter_job.original_file_name,
-        21,
+        22,
     )
 
 
