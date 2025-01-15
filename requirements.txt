@@ -64,7 +64,7 @@ dnspython==2.6.1
     # via eventlet
 docopt==0.6.2
     # via notifications-python-client
-eventlet==0.35.2
+eventlet==0.38.2
     # via gunicorn
 flask==3.1.0
     # via
@@ -96,10 +96,8 @@ govuk-bank-holidays==0.15
     # via notifications-utils
 greenlet==3.0.3
     # via eventlet
-gunicorn @ git+https://github.com/benoitc/gunicorn.git@1299ea9e967a61ae2edebe191082fd169b864c64
-    # via
-    #   -r requirements.in
-    #   notifications-utils
+gunicorn==23.0.0
+    # via notifications-utils
 idna==3.7
     # via
     #   jsonschema
@@ -153,6 +151,7 @@ ordered-set==4.1.0
     # via notifications-utils
 packaging==23.2
     # via
+    #   gunicorn
     #   marshmallow
     #   marshmallow-sqlalchemy
 phonenumbers==8.13.52
@@ -212,8 +211,6 @@ segno==1.6.1
     # via notifications-utils
 sentry-sdk==1.38.0
     # via -r requirements.in
-setuptools==75.6.0
-    # via gunicorn
 six==1.16.0
     # via
     #   click-repl
