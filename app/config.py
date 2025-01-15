@@ -123,6 +123,9 @@ class Config:
     # Logging
     DEBUG = False
 
+    NOTIFY_LOG_LEVEL = os.getenv("NOTIFY_LOG_LEVEL", "INFO")
+    NOTIFY_LOG_LEVEL_HANDLERS = os.getenv("NOTIFY_LOG_LEVEL_HANDLERS", NOTIFY_LOG_LEVEL)
+
     NOTIFY_REQUEST_LOG_LEVEL = os.getenv("NOTIFY_REQUEST_LOG_LEVEL", "INFO")
 
     # Cronitor
