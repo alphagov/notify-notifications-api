@@ -27,16 +27,14 @@ def upgrade():
         VALUES ('{}', '{}', '{}', '{}', '{}', False, '{}', '{}', '{}', 1, '{}')
     """
 
-    template_content = "\n".join(
-        [
-            "Hi ((name)),",
-            "",
-            "To sign in to GOV.​UK Notify please open this link:",
-            "((url))",
-        ]
+    template_content = (
+        "Dear ((name)),\n\n"
+        "Sign in to GOV.UK Notify at:\n\n((url))\n\n"
+        "Thanks\n\n"
+        "GOV.​UK Notify\nhttps://www.gov.uk/notify"
     )
 
-    template_name = "Notify email verify code"
+    template_name = "Email sign in link"
     template_subject = "Sign in to GOV.UK Notify"
 
     op.execute(

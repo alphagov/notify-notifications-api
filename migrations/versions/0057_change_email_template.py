@@ -34,7 +34,7 @@ def upgrade():
         \n\nIf you didn’t try to change the email address for your GOV.​UK Notify account, let us know here:
         \n\n((feedback_url))"""
 
-    template_name = "Confirm new email address"
+    template_name = "Confirm your new email address"
     op.execute(
         template_history_insert.format(
             template_id, template_name, "email", datetime.utcnow(), template_content, service_id, template_name, user_id

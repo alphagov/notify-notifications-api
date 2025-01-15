@@ -318,9 +318,6 @@ def update_service(service_id):
             template_id=current_app.config["SERVICE_NOW_LIVE_TEMPLATE_ID"],
             personalisation={
                 "service_name": current_data["name"],
-                "email_message_limit": current_data["email_message_limit"],
-                "sms_message_limit": current_data["sms_message_limit"],
-                "letter_message_limit": current_data["letter_message_limit"],
             },
             include_user_fields=["name"],
         )

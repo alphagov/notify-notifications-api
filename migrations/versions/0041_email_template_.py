@@ -28,14 +28,14 @@ def upgrade():
                                                 content, archived, service_id, subject, created_by_id, version)
                                  VALUES ('{}', '{}', '{}', '{}', '{}', False, '{}', '{}', '{}', 1)
                               """
-    content = """You already have a GOV.UK Notify account with this email address.
-
-Sign in here: ((signin_url))
-
-If you’ve forgotten your password, you can reset it here: ((forgot_password_url))
-
-
-If you didn’t try to register for a GOV.UK Notify account recently, please let us know here: ((feedback_url))"""
+    content = (
+        "You already have a GOV.UK Notify account for this email address.\n\n"
+        "Sign in to Notify at:\n\n((signin_url))\n\n"
+        "If you’ve forgotten your password, you can reset it at:\n\n((forgot_password_url))\n\n"
+        "If you did not try to register for a GOV.​UK Notify account recently, please let us know at:\n\n"
+        "((feedback_url))\n\nThanks\n\n"
+        "GOV.​UK Notify\nhttps://www.gov.uk/notify"
+    )
 
     op.get_bind()
     op.execute(

@@ -29,22 +29,13 @@ def upgrade():
         VALUES ('{}', '{}', '{}', '{}', '{}', False, '{}', '{}', '{}', 1, '{}', false)
     """
 
-    email_template_content = "\n".join(
-        [
-            "Hi,",
-            "",
-            "This address has been provided as a reply-to email address for a GOV.​UK Notify account.",
-            "Any replies from users to emails they receive through GOV.​UK Notify will come back to this email address.",
-            "",
-            "This is just a quick check to make sure the address is valid.",
-            "",
-            "No need to reply.",
-            "",
-            "Thanks",
-            "",
-            "GOV.​UK Notify team",
-            "https://www.gov.uk/notify",
-        ]
+    email_template_content = (
+        "This address has been added as a reply-to email address for a GOV.​UK Notify service.\n\n"
+        "Any replies to emails sent from that Notify service will come to this address.\n\n"
+        "We sent this email to check the address is valid.\n\n"
+        "You do not need to reply.\n\n"
+        "Thanks\n\n"
+        "GOV.​UK Notify\nhttps://www.gov.uk/notify"
     )
 
     email_template_name = "Verify email reply-to address for a service"

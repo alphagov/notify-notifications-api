@@ -29,56 +29,84 @@ def upgrade():
         VALUES ('{}', '{}', '{}', '{}', '{}', False, '{}', '{}', '{}', 1, '{}')
     """
 
-    template_content = """Hi ((name)),
+    template_content = """Dear ((name)),
 
-((service name)) is now live on GOV.UK Notify.
+The following GOV.​UK Notify service is now live:
 
-You can send up to ((message limit)) messages per day.
+^((service name))
 
-As a live service, you’ll need to know who to contact if you have a question, or something goes wrong.
+This email includes important information about:
 
-^To get email updates whenever there is a problem with Notify, it’s important that you subscribe to our system status page:
-https://status.notifications.service.gov.uk
+* things you need to do now
+* what to do if you have a problem
 
-If our system status page shows a problem, then we’ve been alerted and are working on it – you don’t need to contact us.
-#Problems or questions during office hours
 
-Our office hours are 9.30am to 5.30pm, Monday to Friday.
+---
 
-To report a problem or ask a question, go to the support page:
-https://www.notifications.service.gov.uk/support
+#Things you need to do now
 
-We’ll reply within 30 minutes whether you’re reporting a problem or just asking a question.
+##If you send text messages or letters
 
-The team are also available to answer questions on the cross-government Slack channel:
-https://ukgovernmentdigital.slack.com/messages/govuk-notify
+You must send us a purchase order before you spend any money on text messages or letters.
 
-#Problems or questions out of hours
+[Find out how to raise a purchase order](https://www.notifications.service.gov.uk/pricing/how-to-pay)
 
-We offer out of hours support for emergencies.
+##If you send emails
 
-It’s only an emergency if:
-*   no one in your team can log in
-*   a ‘technical difficulties’ error appears when you try to upload a file
-*   a 500 response code appears when you try to send messages using the API
+Check if you need to add unsubscribe links to your email templates.
 
-If you have one of these emergencies, email details to:
+[See our guidance for more information](https://www.notifications.service.gov.uk/using-notify/unsubscribe-links)
+
+##If you use our API
+
+You can now send messages to anyone by creating a live API key.
+
+[See our API documentation for instructions](https://www.notifications.service.gov.uk/documentation)
+
+---
+
+#If you have a problem
+
+##Before you contact the team
+
+Subscribe to our status page to get email updates: https://status.notifications.service.gov.uk
+
+If the status page shows a problem, we’re already working on a solution – you do not need to contact us.
+
+##How to contact the team
+
+[Use the support page to report a problem or ask a question](https://www.notifications.service.gov.uk/support).
+
+If it’s an emergency we’ll reply within 30 minutes.
+
+For everything else, we’ll reply by the end of the next working day.
+
+Our working days are Monday to Friday, 9:30am to 5:30pm, excluding bank holidays.
+
+##What counts as an emergency?
+
+It’s only an emergency if you get:
+
+* a ‘technical difficulties’ error when you try to send a message
+* a 500 response code when you try to send messages using the API
+
+##If you have an out-of-hours emergency
+
+You should still [use the support page](https://www.notifications.service.gov.uk/support).
+
+If you cannot use the support page, email:
 ooh-gov-uk-notify-support@digital.cabinet-office.gov.uk
 
-^Only use this email address for out of hours emergencies. Don’t share this address with people outside of your team.
+You must only use this email address for out-of-hours emergencies.
 
-We’ll get back to you within 30 minutes and give you hourly updates until the problem’s fixed.
+Do not share this email address with people outside your team.
 
-For non-emergency problems or questions, use our support page and we’ll reply in office hours:
-https://www.notifications.service.gov.uk/support
-#Escalation for emergency problems
-
-If we haven’t acknowledged an emergency problem you’ve reported within 30 minutes and you need to know what’s happening, you can escalate to:
-
-or
+---
 
 Thanks
-GOV.UK Notify team
+
+GOV.​UK Notify
+https://www.gov.uk/notify
 """
 
     template_name = "Automated \"You''re now live\" message"

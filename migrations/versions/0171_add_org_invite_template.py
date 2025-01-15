@@ -30,21 +30,22 @@ def upgrade():
         VALUES ('{}', '{}', '{}', '{}', '{}', False, '{}', '{}', '{}', 1, '{}', false)
     """
 
-    template_content = "\n".join(
-        [
-            "((user_name)) has invited you to collaborate on ((organisation_name)) on GOV.UK Notify.",
-            "",
-            "GOV.UK Notify makes it easy to keep people updated by helping you send text messages, emails and letters.",
-            "",
-            "Open this link to create an account on GOV.UK Notify:",
-            "((url))",
-            "",
-            "This invitation will stop working at midnight tomorrow. This is to keep ((organisation_name)) secure.",
-        ]
+    template_content = (
+        "((user_name)) has invited you to see how ((organisation_name)) is using GOV.UK Notify.\n\n"
+        "You’ll get an overview of:\n\n"
+        "* all the live services in your organisation\n\n"
+        "* how much each service is spending\n\n"
+        "* which team members belong to each service\n\n"
+        "You’ll also be able to invite other colleagues to see this information.\n\n"
+        "Use this link to accept the invitation:\n\n"
+        "^ ((url))\n\n"
+        "This invitation will stop working at midnight tomorrow. This is to keep ‘((organisation_name))’ secure.\n\n"
+        "Thanks\n\n"
+        "GOV.​UK Notify\nhttps://www.gov.uk/notify"
     )
 
     template_name = "Notify organisation invitation email"
-    template_subject = "((user_name)) has invited you to collaborate on ((organisation_name)) on GOV.UK Notify"
+    template_subject = "See how ((organisation_name)) is using GOV.UK Notify"
 
     op.execute(
         template_history_insert.format(

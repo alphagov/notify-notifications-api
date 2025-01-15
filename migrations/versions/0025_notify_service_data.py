@@ -54,7 +54,9 @@ def upgrade():
                                  VALUES ('{}', '{}', '{}', '{}', '{}', False, '{}', '{}', '{}', 1)
                               """
     email_verification_content = (
-        """Hi ((name)),\n\nTo complete your registration for GOV.UK Notify please click the link below\n\n((url))"""
+        "Dear ((name)),\n\n"
+        "Complete your GOV.UK Notify registration at:\n\n((url))\n\n"
+        "Thanks\n\nGOV.​UK Notify\nhttps://www.gov.uk/notify"
     )
     op.execute(
         template_history_insert.format(
@@ -64,7 +66,7 @@ def upgrade():
             datetime.utcnow(),
             email_verification_content,
             service_id,
-            "Confirm GOV.UK Notify registration",
+            "Complete your GOV.UK Notify registration",
             user_id,
         )
     )
@@ -76,17 +78,19 @@ def upgrade():
             datetime.utcnow(),
             email_verification_content,
             service_id,
-            "Confirm GOV.UK Notify registration",
+            "Complete your GOV.UK Notify registration",
             user_id,
         )
     )
 
-    invitation_subject = "((user_name)) has invited you to collaborate on ((service_name)) on GOV.UK Notify"
-    invitation_content = """((user_name)) has invited you to collaborate on ((service_name)) on GOV.UK Notify.\n\n
-        GOV.UK Notify makes it easy to keep people updated by helping you send text messages, emails and letters.\n\n
-        Click this link to create an account on GOV.UK Notify:\n((url))\n\n
-        This invitation will stop working at midnight tomorrow. This is to keep ((service_name)) secure.
-        """
+    invitation_subject = "((user_name)) has invited you to join ((service_name)) on GOV.UK Notify"
+    invitation_content = (
+        "((user_name)) has invited you to join the following GOV.UK Notify service:\n\n^((service_name))\n\n"
+        "GOV.UK Notify makes it easy to keep people updated by helping you send text messages, emails and letters.\n\n"
+        "Use this link to join the team:\n\n((url))\n\n"
+        "This invitation will stop working at midnight tomorrow. This is to keep ‘((service_name))’ secure.\n\nThanks\n\n"
+        "GOV.​UK Notify\nhttps://www.gov.uk/notify"
+    )
     op.execute(
         template_history_insert.format(
             "4f46df42-f795-4cc4-83bb-65ca312f49cc",
@@ -112,7 +116,7 @@ def upgrade():
         )
     )
 
-    sms_code_content = "((verify_code)) is your Notify authentication code"
+    sms_code_content = "((verify_code)) is your Notify security code."
     op.execute(
         template_history_insert.format(
             "36fb0730-6259-4da1-8a80-c8de22ad4246",
@@ -140,12 +144,13 @@ def upgrade():
     )
 
     password_reset_content = (
-        "Hi ((user_name)),\n\n"
+        "Dear ((user_name)),\n\n"
         "We received a request to reset your password on GOV.UK Notify.\n\n"
-        "If you didn''t request this email, you can ignore it – "
-        "your password has not been changed.\n\n"
-        "To reset your password, click this link:\n\n"
-        "((url))"
+        "Reset your password at:\n\n"
+        "((url))\n\n"
+        "If you did not request this email, you can ignore it – your password has not been changed.\n\n"
+        "Thanks\n\n"
+        "GOV.​UK Notify\nhttps://www.gov.uk/notify"
     )
 
     op.execute(
