@@ -64,7 +64,7 @@ dnspython==2.6.1
     # via eventlet
 docopt==0.6.2
     # via notifications-python-client
-eventlet==0.35.2
+eventlet==0.38.2
     # via gunicorn
 flask==3.1.0
     # via

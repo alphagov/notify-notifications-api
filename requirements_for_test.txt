@@ -108,7 +108,7 @@ docopt==0.6.2
     # via
     #   -r requirements.txt
     #   notifications-python-client
-eventlet==0.35.2
+eventlet==0.38.2
     # via
     #   -r requirements.txt
     #   gunicorn
